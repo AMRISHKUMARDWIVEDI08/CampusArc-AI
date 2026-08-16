@@ -1,0 +1,15 @@
+'use strict';
+const { Router } = require('express');
+const { authenticate } = require('../../../middleware/auth');
+const { requireRole } = require('../../../middleware/roleGuard');
+const controller = require('../../../controllers/scholarshipController');
+const { ROLES } = require('../../../config/constants');
+const router = Router();
+router.get('/rules', authenticate, controller.listRules);
+router.post('/rules', authenticate, requireRole(ROLES.ADMIN), controller.createRule);
+router.patch('/rules/:id', authenticate, requireRole(ROLES.ADMIN), controller.updateRule);
+router.delete('/rules/:id', authenticate, requireRole(ROLES.ADMIN), controller.deactivateRule);
+router.post('/evaluate/:studentId/:feeId', authenticate, controller.evaluateStudent);
+router.post('/batch', authenticate, requireRole(ROLES.ADMIN), controller.runBatch);
+router.get('/students/:studentId', authenticate, controller.studentSummary);
+module.exports = router;
