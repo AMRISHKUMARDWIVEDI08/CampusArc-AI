@@ -1,0 +1,4 @@
+'use strict';
+const {ARC}=require('../config/constants');
+function generateReceipt(transaction,feeRecord){const explorerUrl=transaction.tx_hash?`${ARC.BLOCK_EXPLORER}/tx/${transaction.tx_hash}`:null;return {receipt:{receipt_id:transaction.receipt_id||`RCP-${transaction.id}`,issued_at:new Date().toISOString(),student:{id:feeRecord.student_id,name:feeRecord.student_name,roll_no:feeRecord.roll_no||null,school:feeRecord.school_name},payment:{fee_id:feeRecord.id,transaction_id:transaction.id,amount:transaction.amount,currency:transaction.currency||'USDC',status:transaction.status,payment_provider:transaction.payment_provider||'circle',memo_ref:transaction.memo_ref||null},blockchain:{network:'Arc Testnet',chain_id:ARC.CHAIN_ID,tx_hash:transaction.tx_hash||null,block_ref:transaction.block_ref||null,explorer_url:explorerUrl,finality:'BFT Instant Settlement'}}};}
+module.exports={generateReceipt};
