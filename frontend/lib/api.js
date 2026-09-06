@@ -13,8 +13,10 @@ async function request(method, path, body) {
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const token = getToken();
   const headers = {};
+
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
+
   try {
     const response = await fetch(`${BASE}${path}`, {
       method,
@@ -25,7 +27,10 @@ async function request(method, path, body) {
     });
     const contentType = response.headers.get('content-type') || '';
     const data = contentType.includes('application/json') ? await response.json() : null;
-    if (!response.ok) throw new Error(data && typeof data.message === 'string' ? data.message : `Request failed (HTTP ${response.status}).`);
+
+    if (!response.ok) {
+      throw new Error(data && typeof data.message === 'string' ? data.message : `Request failed (HTTP ${response.status}).`);
+    }
     if (!data && response.status !== 204) throw new Error('Server returned an unexpected response format.');
     return data;
   } catch (error) {
@@ -41,10 +46,10 @@ export const api = {
   post: (path, body) => request('POST', path, body),
   patch: (path, body) => request('PATCH', path, body),
   login: (credentials) => request('POST', '/api/v1/auth/login', credentials),
+  register: (profile) => request('POST', '/api/v1/auth/register', profile),
   me: () => request('GET', '/api/v1/auth/me'),
   school: (id) => request('GET', `/api/v1/schools/${id}`),
-  wallet: (id) => request('POST', `/api/v1/schools/${id}/provision-wallet`),
-  circleStatus: (schoolId) => request('GET', `/api/v1/schools/${schoolId}/circle-status`),
+  createSchool: (body) => request('POST', '/api/v1/schools', body),
   scholarshipRules: () => request('GET', '/api/v1/scholarships/rules'),
   studentScholarships: (studentId) => request('GET', `/api/v1/scholarships/students/${studentId}`),
   runScholarship: () => request('POST', '/api/v1/scholarships/batch'),
