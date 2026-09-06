@@ -21,6 +21,11 @@ async function findByMemoRef(memoRef) {
   return result.rows[0] || null;
 }
 
+async function findByTxHash(txHash) {
+  const result = await db.execute({ sql: 'SELECT * FROM transactions WHERE tx_hash=? LIMIT 1', args: [txHash] });
+  return result.rows[0] || null;
+}
+
 async function findByStudent(studentId) {
   const result = await db.execute({ sql: 'SELECT * FROM transactions WHERE student_id=? ORDER BY created_at DESC', args: [studentId] });
   return result.rows;
@@ -37,4 +42,4 @@ async function updateStatus(id, fields) {
   });
 }
 
-module.exports = { create, findById, findByMemoRef, findByStudent, updateStatus };
+module.exports = { create, findById, findByMemoRef, findByTxHash, findByStudent, updateStatus };
