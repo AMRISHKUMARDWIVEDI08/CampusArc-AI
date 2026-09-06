@@ -1,11 +1,121 @@
 'use strict';
-const crypto=require('crypto');
-const feeModel=require('../models/feeModel');
-const studentModel=require('../models/studentModel');
-const transactionModel=require('../models/transactionModel');
-const circleService=require('./blockchain/circleService');
-const {ROLES}=require('../config/constants');
-async function payFee(feeId,requester){const fee=await feeModel.findByIdWithStudent(feeId);if(!fee){const e=new Error('Fee record not found.');e.statusCode=404;throw e;}if(fee.status!=='pending'||Number(fee.due_amount)<=0){const e=new Error('This fee is not payable.');e.statusCode=409;throw e;}if(requester.role===ROLES.ADMIN){if(fee.school_id!==requester.school_id){const e=new Error('Access denied.');e.statusCode=403;throw e;}}else{const student=await studentModel.findByUserId(requester.id);if(!student||student.id!==fee.student_id){const e=new Error('Access denied.');e.statusCode=403;throw e;}}
-const amount=Number(fee.due_amount);const memoRef=`FEE-${feeId}-${crypto.randomUUID()}`;const txId=await transactionModel.create({student_id:fee.student_id,amount,currency:'USDC',payment_provider:'circle',memo_ref:memoRef,status:'pending'});
-try{if(!fee.school_circle_wallet_id){const e=new Error('School Circle wallet is not configured.');e.statusCode=503;throw e;}if(!fee.school_wallet){const e=new Error('School destination wallet is not configured.');e.statusCode=503;throw e;}const transfer=await circleService.initiateTransfer({walletId:fee.school_circle_wallet_id,destinationAddr:requester.wallet_address||null,amountUsdc6:String(Math.round(amount*1e6)),idempotencyKey:crypto.randomUUID(),memoRef});await transactionModel.updateStatus(txId,{status:'processing',tx_hash:transfer.txHash||null});return {transactionId:txId,transferId:transfer.transferId||null,status:'processing',txHash:transfer.txHash||null,memoRef};}catch(err){await transactionModel.updateStatus(txId,{status:'failed',failure_reason:err.message});const e=new Error(err.statusCode?err.message:'Payment provider unavailable. No payment was confirmed.');e.statusCode=err.statusCode||503;throw e;}}
-module.exports={payFee};
+
+const feeModel = require('../models/feeModel');
+const studentModel = require('../models/studentModel');
+const transactionModel = require('../models/transactionModel');
+const { ARC, ROLES } = require('../config/constants');
+const arcService = require('./blockchain/arcService');
+const crypto = require('crypto');
+
+function badRequest(message, statusCode = 400) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function toUsdc6(amount) {
+  const value = Number(amount);
+  if (!Number.isFinite(value) || value <= 0) throw badRequest('Payment amount must be greater than zero.');
+  const scaled = Math.round(value * 1_000_000);
+  if (scaled <= 0) throw badRequest('Payment amount is below the supported USDC precision.');
+  return String(scaled);
+}
+
+async function assertFeeAccess(feeId, requester) {
+  const fee = await feeModel.findByIdWithStudent(feeId);
+  if (!fee) throw badRequest('Fee record not found.', 404);
+  if (requester.role === ROLES.ADMIN) {
+    if (!requester.school_id || Number(requester.school_id) !== Number(fee.school_id)) throw badRequest('Access denied.', 403);
+  } else if (requester.role === ROLES.STUDENT) {
+    const student = await studentModel.findByUserId(requester.id);
+    if (!student || Number(student.id) !== Number(fee.student_id)) throw badRequest('Access denied.', 403);
+  } else {
+    throw badRequest('Access denied.', 403);
+  }
+  return fee;
+}
+
+async function payFee(feeId, requester, walletAddress) {
+  const fee = await assertFeeAccess(feeId, requester);
+  if (fee.status === 'paid' || Number(fee.due_amount) <= 0) throw badRequest('This fee is not payable.', 409);
+  if (!walletAddress || !/^0x[0-9a-fA-F]{40}$/.test(walletAddress)) throw badRequest('A valid payer wallet address is required.');
+  if (!fee.school_wallet || !/^0x[0-9a-fA-F]{40}$/.test(fee.school_wallet)) throw badRequest('School destination wallet is not configured.', 503);
+
+  const memoRef = `CAMPUSARC-FEE-${feeId}-STU-${fee.student_id}`;
+  const existing = await transactionModel.findByMemoRef(memoRef);
+  if (existing && (existing.status === 'paid' || existing.status === 'processing')) {
+    return { transaction: existing, status: existing.status, paymentRequired: false };
+  }
+
+  let txId = existing?.id;
+  if (!txId) {
+    txId = await transactionModel.create({
+      student_id: fee.student_id,
+      amount: fee.due_amount,
+      currency: 'USDC',
+      payment_provider: 'arc_wallet',
+      memo_ref: memoRef,
+      tx_hash: null,
+      receipt_id: `RCP-${crypto.randomUUID()}`,
+    });
+  }
+
+  return {
+    transactionId: txId,
+    status: 'payment_required',
+    paymentRequired: true,
+    network: 'Arc Testnet',
+    chainId: ARC.CHAIN_ID,
+    tokenAddress: ARC.USDC_TOKEN,
+    tokenDecimals: ARC.USDC_DECIMALS,
+    destinationAddress: fee.school_wallet.toLowerCase(),
+    amount: Number(fee.due_amount),
+    amountBaseUnits: toUsdc6(fee.due_amount),
+    memoRef,
+  };
+}
+
+async function confirmFeePayment(feeId, requester, txHash, walletAddress) {
+  const fee = await assertFeeAccess(feeId, requester);
+  if (fee.status === 'paid') return { status: 'paid', alreadyPaid: true };
+  if (!txHash || !/^0x[0-9a-fA-F]{64}$/.test(txHash)) throw badRequest('Invalid transaction hash.');
+  if (!walletAddress || !/^0x[0-9a-fA-F]{40}$/.test(walletAddress)) throw badRequest('Valid payer wallet address is required.');
+  if (!fee.school_wallet) throw badRequest('School destination wallet is not configured.', 503);
+
+  const result = await arcService.verifyUsdcTransfer({
+    txHash,
+    sender: walletAddress,
+    destination: fee.school_wallet,
+    amountBaseUnits: toUsdc6(fee.due_amount),
+  });
+
+  if (result.status === 'pending') return { status: 'pending', transactionHash: txHash };
+  if (result.status !== 'success') throw badRequest('The blockchain transaction failed or was reverted.', 409);
+
+  const memoRef = `CAMPUSARC-FEE-${feeId}-STU-${fee.student_id}`;
+  let tx = await transactionModel.findByMemoRef(memoRef);
+  if (!tx) {
+    const txId = await transactionModel.create({
+      student_id: fee.student_id,
+      amount: fee.due_amount,
+      currency: 'USDC',
+      payment_provider: 'arc_wallet',
+      memo_ref: memoRef,
+      tx_hash: txHash,
+      receipt_id: `RCP-${crypto.randomUUID()}`,
+    });
+    tx = await transactionModel.findById(txId);
+  }
+
+  await transactionModel.updateStatus(tx.id, {
+    status: 'paid',
+    tx_hash: txHash,
+    block_ref: result.blockNumber != null ? String(result.blockNumber) : null,
+    failure_reason: null,
+  });
+  await feeModel.update(feeId, { status: 'paid', due_amount: 0 });
+
+  return { status: 'paid', transactionId: tx.id, transactionHash: txHash, blockNumber: result.blockNumber };
+}
+
+module.exports = { payFee, confirmFeePayment };
