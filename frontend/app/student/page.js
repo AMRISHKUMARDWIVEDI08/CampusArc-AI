@@ -5,33 +5,60 @@ import { useRouter } from 'next/navigation';
 import TopBar from '../../components/dashboard/TopBar';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../lib/api';
+import { connectWallet, sendUsdcTransfer } from '../../lib/wallet';
 
 export default function StudentPage() {
   const router = useRouter();
   const { user, loading, logout } = useAuth();
   const [fees, setFees] = useState([]);
   const [busyId, setBusyId] = useState(null);
+  const [walletAddress, setWalletAddress] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login?role=student');
+    if (!loading && !user) router.replace('/login');
     if (!loading && user && user.role !== 'student') router.replace('/admin');
   }, [loading, user, router]);
 
   useEffect(() => {
     if (!user?.student_id) return;
-    api.fees(user.student_id).then((r) => setFees(Array.isArray(r.fees) ? r.fees : Array.isArray(r) ? r : [])).catch((e) => setError(e.message));
+    api.fees(user.student_id)
+      .then((response) => setFees(Array.isArray(response?.fees) ? response.fees : []))
+      .catch((err) => setError(err.message));
   }, [user?.student_id]);
 
   async function pay(feeId) {
-    setBusyId(feeId); setMessage(''); setError('');
+    setBusyId(feeId);
+    setMessage('');
+    setError('');
     try {
-      const r = await api.payFee(feeId);
-      setMessage(r.message || 'Payment flow submitted. Wait for verified confirmation before treating it as complete.');
+      const connected = await connectWallet();
+      setWalletAddress(connected.address);
+      const prepared = await api.payFee(feeId, connected.address);
+      if (!prepared.paymentRequired) {
+        setMessage(`Payment status: ${prepared.status}.`);
+        return;
+      }
+
+      setMessage('Payment request is ready. Confirm the transaction in your wallet.');
+      const txHash = await sendUsdcTransfer({
+        provider: connected.provider,
+        from: connected.address,
+        tokenAddress: prepared.tokenAddress,
+        destinationAddress: prepared.destinationAddress,
+        amountBaseUnits: prepared.amountBaseUnits,
+      });
+
+      const confirmation = await api.confirmFeePayment(feeId, txHash, connected.address);
+      setMessage(confirmation.message || 'Payment verified on Arc.');
       const refreshed = await api.fees(user.student_id);
-      setFees(Array.isArray(refreshed.fees) ? refreshed.fees : []);
-    } catch (e) { setError(e.message || 'Payment failed.'); } finally { setBusyId(null); }
+      setFees(Array.isArray(refreshed?.fees) ? refreshed.fees : []);
+    } catch (err) {
+      setError(err?.message || 'Payment failed.');
+    } finally {
+      setBusyId(null);
+    }
   }
 
   if (loading || !user) return <main className="login-wrap"><span className="status"><span className="dot" />Loading student portal…</span></main>;
@@ -49,7 +76,7 @@ export default function StudentPage() {
         <div className="grid grid-3">
           <div className="card"><div className="label">school</div><div className="stat" style={{ marginTop: 8 }}>#{user.school_id ?? '—'}</div></div>
           <div className="card"><div className="label">student id</div><div className="stat" style={{ marginTop: 8 }}>#{user.student_id ?? '—'}</div></div>
-          <div className="card"><div className="label">network</div><div className="stat" style={{ marginTop: 8, fontSize: 18 }}>Arc</div><div className="muted">USDC payments</div></div>
+          <div className="card"><div className="label">connected wallet</div><div className="stat" style={{ marginTop: 8, fontSize: 14 }}>{walletAddress ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}` : 'Not connected'}</div><div className="muted">Arc Testnet</div></div>
         </div>
         <section className="section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}><h2>Fee ledger</h2><button className="btn" onClick={() => router.push('/help')}>Help</button></div>
