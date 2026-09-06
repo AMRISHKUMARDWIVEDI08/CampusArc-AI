@@ -1,11 +1,70 @@
 'use strict';
-const crypto=require('crypto');
-const schoolModel=require('../models/schoolModel');
-const userModel=require('../models/userModel');
-const circleService=require('./blockchain/circleService');
-const {ROLES}=require('../config/constants');
-async function createSchool({school_name,admin_user_id},requester){if(requester.role!==ROLES.ADMIN){const e=new Error('Only admin accounts can create schools.');e.statusCode=403;throw e;}if(!school_name||school_name.trim().length<3){const e=new Error('school_name must be at least 3 characters.');e.statusCode=400;throw e;}if(await schoolModel.nameExists(school_name)){const e=new Error(`A school named "${school_name}" already exists.`);e.statusCode=409;throw e;}const schoolId=await schoolModel.create({school_name:school_name.trim()});let walletId=null,walletAddress=null,walletError=null;try{const wallet=await circleService.createWallet({schoolId,idempotencyKey:crypto.randomUUID()});walletId=wallet.walletId;walletAddress=wallet.address;if(walletAddress)await schoolModel.setWalletAddress(schoolId,walletAddress);}catch(err){walletError=err.message;}if(admin_user_id){const adminUser=await userModel.findById(admin_user_id);if(adminUser&&adminUser.role===ROLES.ADMIN&&userModel.setSchoolId)await userModel.setSchoolId(admin_user_id,schoolId);}return {school:await schoolModel.findById(schoolId),wallet:{walletId:walletId||null,walletAddress:walletAddress||null,provisioned:!!walletAddress,error:walletError||null}};}
-async function provisionWallet(schoolId,requester){if(requester.role!==ROLES.ADMIN){const e=new Error('Only admins can provision school wallets.');e.statusCode=403;throw e;}const school=await schoolModel.findById(schoolId);if(!school){const e=new Error('School not found.');e.statusCode=404;throw e;}if(school.wallet_address)return {school,wallet:{walletAddress:school.wallet_address,provisioned:true,note:'Wallet already provisioned.'}};const wallet=await circleService.createWallet({schoolId,idempotencyKey:crypto.randomUUID()});if(wallet.address)await schoolModel.setWalletAddress(schoolId,wallet.address);return {school:await schoolModel.findById(schoolId),wallet:{walletId:wallet.walletId,walletAddress:wallet.address||null,provisioned:!!wallet.address}};}
-async function getSchool(schoolId){const school=await schoolModel.findById(schoolId);if(!school){const e=new Error('School not found.');e.statusCode=404;throw e;}return school;}
-async function listSchools(){return schoolModel.findAll();}
-module.exports={createSchool,provisionWallet,getSchool,listSchools};
+
+const schoolModel = require('../models/schoolModel');
+const userModel = require('../models/userModel');
+const { ROLES } = require('../config/constants');
+
+function normalizeWalletAddress(value) {
+  const wallet = String(value || '').trim();
+  if (!wallet) return null;
+  if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
+    const error = new Error('wallet_address must be a valid EVM wallet address.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return wallet;
+}
+
+async function createSchool({ school_name, wallet_address, admin_user_id }, requester) {
+  if (requester.role !== ROLES.ADMIN) {
+    const error = new Error('Only admin accounts can create schools.');
+    error.statusCode = 403;
+    throw error;
+  }
+  if (!school_name || school_name.trim().length < 3) {
+    const error = new Error('school_name must be at least 3 characters.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const walletAddress = normalizeWalletAddress(wallet_address);
+  if (await schoolModel.nameExists(school_name)) {
+    const error = new Error(`A school named "${school_name}" already exists.`);
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const schoolId = await schoolModel.create({ school_name: school_name.trim() });
+  if (walletAddress) await schoolModel.setWalletAddress(schoolId, walletAddress);
+
+  const adminId = admin_user_id || requester.id;
+  if (adminId) {
+    const adminUser = await userModel.findById(adminId);
+    if (adminUser && adminUser.role === ROLES.ADMIN) await userModel.setSchoolId(adminId, schoolId);
+  }
+
+  return {
+    school: await schoolModel.findById(schoolId),
+    wallet: {
+      walletAddress,
+      provisioned: Boolean(walletAddress),
+      note: walletAddress ? 'School wallet address saved for Arc USDC payments.' : 'No school wallet address configured yet.'
+    }
+  };
+}
+
+async function getSchool(schoolId) {
+  const school = await schoolModel.findById(schoolId);
+  if (!school) {
+    const error = new Error('School not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+  return school;
+}
+
+async function listSchools() {
+  return schoolModel.findAll();
+}
+
+module.exports = { createSchool, getSchool, listSchools };
