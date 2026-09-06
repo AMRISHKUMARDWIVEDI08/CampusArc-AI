@@ -9,7 +9,6 @@ const authRoutes = require('./routes/api/v1/auth');
 const schoolRoutes = require('./routes/api/v1/schools');
 const feeRoutes = require('./routes/api/v1/fees');
 const scholarshipRoutes = require('./routes/api/v1/scholarships');
-const circleRoutes = require('./routes/api/v1/circle');
 const aiRoutes = require('./routes/api/v1/ai');
 
 const app = express();
@@ -26,12 +25,18 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '256kb' }));
-app.get('/health', (_req, res) => res.status(200).json({ success: true, message: 'CampusArc AI API running.' }));
+app.get('/health', (_req, res) => res.status(200).json({
+  success: true,
+  product: 'CampusArc AI',
+  network: 'Arc Testnet',
+  payments: 'USDC on Arc',
+  message: 'CampusArc AI API running.'
+}));
+
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/schools', schoolRoutes);
 app.use('/api/v1/fees', feeRoutes);
 app.use('/api/v1/scholarships', scholarshipRoutes);
-app.use('/api/v1/circle', circleRoutes);
 app.use('/api/v1/ai', aiRoutes);
 
 app.use((req, res) => res.status(404).json({ success: false, message: 'Route not found.' }));
