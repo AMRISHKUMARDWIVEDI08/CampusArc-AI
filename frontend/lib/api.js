@@ -13,10 +13,8 @@ async function request(method, path, body) {
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const token = getToken();
   const headers = {};
-
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
-
   try {
     const response = await fetch(`${BASE}${path}`, {
       method,
@@ -25,17 +23,9 @@ async function request(method, path, body) {
       signal: controller.signal,
       cache: 'no-store',
     });
-
     const contentType = response.headers.get('content-type') || '';
     const data = contentType.includes('application/json') ? await response.json() : null;
-
-    if (!response.ok) {
-      const message = data && typeof data.message === 'string'
-        ? data.message
-        : `Request failed (HTTP ${response.status}).`;
-      throw new Error(message);
-    }
-
+    if (!response.ok) throw new Error(data && typeof data.message === 'string' ? data.message : `Request failed (HTTP ${response.status}).`);
     if (!data && response.status !== 204) throw new Error('Server returned an unexpected response format.');
     return data;
   } catch (error) {
@@ -54,12 +44,13 @@ export const api = {
   me: () => request('GET', '/api/v1/auth/me'),
   school: (id) => request('GET', `/api/v1/schools/${id}`),
   wallet: (id) => request('POST', `/api/v1/schools/${id}/provision-wallet`),
-  circleStatus: (schoolId) => request('GET', `/api/v1/schools/${schoolId}/circle-status`),
+  circleStatus: (schoolId) => request('GET', `/api/v1/circle/status`, { schoolId }),
   scholarshipRules: () => request('GET', '/api/v1/scholarships/rules'),
   studentScholarships: (studentId) => request('GET', `/api/v1/scholarships/students/${studentId}`),
-  runScholarship: (schoolId) => request('POST', '/api/v1/scholarships/batch', { school_id: schoolId }),
+  runScholarship: () => request('POST', '/api/v1/scholarships/batch'),
   fees: (studentId) => request('GET', `/api/v1/fees/${studentId}`),
-  payFee: (feeId) => request('POST', `/api/v1/fees/${feeId}/pay`),
+  payFee: (feeId, walletAddress) => request('POST', `/api/v1/fees/${feeId}/pay`, { walletAddress }),
+  confirmFeePayment: (feeId, txHash, walletAddress) => request('POST', `/api/v1/fees/${feeId}/confirm`, { txHash, walletAddress }),
   receipt: (feeId) => request('GET', `/api/v1/fees/${feeId}/receipt`),
   aiAssistant: (body) => request('POST', '/api/v1/ai/assistant', body),
 };
