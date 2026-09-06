@@ -55,10 +55,11 @@ export const api = {
   school: (id) => request('GET', `/api/v1/schools/${id}`),
   wallet: (id) => request('POST', `/api/v1/schools/${id}/provision-wallet`),
   circleStatus: (schoolId) => request('GET', `/api/v1/schools/${schoolId}/circle-status`),
-  scholarshipRules: (schoolId) => request('GET', '/api/v1/scholarships/rules'),
+  scholarshipRules: () => request('GET', '/api/v1/scholarships/rules'),
   studentScholarships: (studentId) => request('GET', `/api/v1/scholarships/students/${studentId}`),
   runScholarship: (schoolId) => request('POST', '/api/v1/scholarships/batch', { school_id: schoolId }),
   fees: (studentId) => request('GET', `/api/v1/fees/${studentId}`),
   payFee: (feeId) => request('POST', `/api/v1/fees/${feeId}/pay`),
   receipt: (feeId) => request('GET', `/api/v1/fees/${feeId}/receipt`),
+  aiAssistant: (body) => request('POST', '/api/v1/ai/assistant', body),
 };
