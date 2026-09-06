@@ -43,9 +43,7 @@ async function payFee(feeId, requester, walletAddress) {
 
   const memoRef = `CAMPUSARC-FEE-${feeId}-STU-${fee.student_id}`;
   const existing = await transactionModel.findByMemoRef(memoRef);
-  if (existing && (existing.status === 'paid' || existing.status === 'processing')) {
-    return { transaction: existing, status: existing.status, paymentRequired: false };
-  }
+  if (existing && existing.status === 'paid') return { transaction: existing, status: 'paid', paymentRequired: false };
 
   let txId = existing?.id;
   if (!txId) {
@@ -82,6 +80,10 @@ async function confirmFeePayment(feeId, requester, txHash, walletAddress) {
   if (!walletAddress || !/^0x[0-9a-fA-F]{40}$/.test(walletAddress)) throw badRequest('Valid payer wallet address is required.');
   if (!fee.school_wallet) throw badRequest('School destination wallet is not configured.', 503);
 
+  const memoRef = `CAMPUSARC-FEE-${feeId}-STU-${fee.student_id}`;
+  const existingTx = await transactionModel.findByTxHash(txHash);
+  if (existingTx && existingTx.memo_ref !== memoRef) throw badRequest('This transaction has already been assigned to another fee.', 409);
+
   const result = await arcService.verifyUsdcTransfer({
     txHash,
     sender: walletAddress,
@@ -92,7 +94,6 @@ async function confirmFeePayment(feeId, requester, txHash, walletAddress) {
   if (result.status === 'pending') return { status: 'pending', transactionHash: txHash };
   if (result.status !== 'success') throw badRequest('The blockchain transaction failed or was reverted.', 409);
 
-  const memoRef = `CAMPUSARC-FEE-${feeId}-STU-${fee.student_id}`;
   let tx = await transactionModel.findByMemoRef(memoRef);
   if (!tx) {
     const txId = await transactionModel.create({
