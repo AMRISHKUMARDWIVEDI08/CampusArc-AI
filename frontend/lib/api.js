@@ -57,5 +57,7 @@ export const api = {
   payFee: (feeId, walletAddress) => request('POST', `/api/v1/fees/${feeId}/pay`, { walletAddress }),
   confirmFeePayment: (feeId, txHash, walletAddress) => request('POST', `/api/v1/fees/${feeId}/confirm`, { txHash, walletAddress }),
   receipt: (feeId) => request('GET', `/api/v1/fees/${feeId}/receipt`),
+  transactions: (studentId) => request('GET', `/api/v1/transactions/student/${studentId}`),
+  schoolTransactions: (schoolId) => request('GET', `/api/v1/transactions/school/${schoolId}`),
   aiAssistant: (body) => request('POST', '/api/v1/ai/assistant', body),
 };
