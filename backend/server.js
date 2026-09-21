@@ -10,6 +10,7 @@ const schoolRoutes = require('./routes/api/v1/schools');
 const feeRoutes = require('./routes/api/v1/fees');
 const scholarshipRoutes = require('./routes/api/v1/scholarships');
 const aiRoutes = require('./routes/api/v1/ai');
+const transactionRoutes = require('./routes/api/v1/transactions');
 
 const app = express();
 app.disable('x-powered-by');
@@ -38,6 +39,7 @@ app.use('/api/v1/schools', schoolRoutes);
 app.use('/api/v1/fees', feeRoutes);
 app.use('/api/v1/scholarships', scholarshipRoutes);
 app.use('/api/v1/ai', aiRoutes);
+app.use('/api/v1/transactions', transactionRoutes);
 
 app.use((req, res) => res.status(404).json({ success: false, message: 'Route not found.' }));
 app.use((err, _req, res, _next) => {
