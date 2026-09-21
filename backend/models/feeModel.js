@@ -10,8 +10,7 @@ async function findById(id) {
 async function findByIdWithStudent(id) {
   const result = await db.execute({
     sql: `SELECT f.*,s.user_id,s.school_id,s.name AS student_name,
-                 sc.school_name,sc.wallet_address AS school_wallet,
-                 sc.circle_wallet_id AS school_circle_wallet_id
+                 sc.school_name,sc.wallet_address AS school_wallet
           FROM fees f
           JOIN students s ON s.id=f.student_id
           JOIN schools sc ON sc.id=s.school_id
