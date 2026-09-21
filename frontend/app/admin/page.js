@@ -11,6 +11,7 @@ export default function AdminPage() {
   const { user, loading, logout } = useAuth();
   const [school, setSchool] = useState(null);
   const [rules, setRules] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -22,10 +23,12 @@ export default function AdminPage() {
     if (!user?.school_id) return;
     Promise.all([
       api.school(user.school_id),
-      api.scholarshipRules(user.school_id)
-    ]).then(([schoolResponse, rulesResponse]) => {
+      api.scholarshipRules(user.school_id),
+      api.schoolTransactions(user.school_id)
+    ]).then(([schoolResponse, rulesResponse, transactionResponse]) => {
       setSchool(schoolResponse.school ?? null);
       setRules(Array.isArray(rulesResponse.rules) ? rulesResponse.rules : []);
+      setTransactions(Array.isArray(transactionResponse.transactions) ? transactionResponse.transactions : []);
     }).catch((e) => setError(e.message || 'Unable to load admin data.'));
   }, [user?.school_id]);
 
@@ -48,6 +51,11 @@ export default function AdminPage() {
           <section className="card"><div className="label">Arc payment wallet</div><h2 style={{ marginTop: 8 }}>{school?.wallet_address ? `${school.wallet_address.slice(0, 8)}…${school.wallet_address.slice(-6)}` : 'Not configured'}</h2><p style={{ marginTop: 8 }}>USDC payments are sent directly to this school-controlled EVM address.</p></section>
           <section className="card"><div className="label">AI workspace</div><h2 style={{ marginTop: 8 }}>Ready</h2><p style={{ marginTop: 8 }}>Open the shared CampusArc AI assistant for a team demo.</p><button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => router.push('/ai')}>Open AI</button></section>
         </div>
+
+        <section className="section">
+          <h2 style={{ marginBottom: 12 }}>Payment history</h2>
+          {!transactions.length ? <div className="empty">No campus transactions yet.</div> : <div className="card" style={{ overflowX: 'auto', marginBottom: 20 }}><table className="table"><thead><tr><th>Student</th><th>Amount</th><th>Status</th><th>Tx</th></tr></thead><tbody>{transactions.map((tx) => <tr key={tx.id}><td>{tx.student_name || tx.student_id}</td><td>{tx.amount} {tx.currency}</td><td>{tx.status}</td><td>{tx.tx_hash ? `${tx.tx_hash.slice(0, 8)}…${tx.tx_hash.slice(-6)}` : '—'}</td></tr>)}</tbody></table></div>}
+        </section>
 
         <section className="section">
           <h2 style={{ marginBottom: 12 }}>Scholarship rules</h2>
