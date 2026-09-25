@@ -14,11 +14,12 @@ function badRequest(message, statusCode = 400) {
 }
 
 function toUsdc6(amount) {
-  const value = Number(amount);
-  if (!Number.isFinite(value) || value <= 0) throw badRequest('Payment amount must be greater than zero.');
-  const scaled = Math.round(value * 1_000_000);
-  if (scaled <= 0) throw badRequest('Payment amount is below the supported USDC precision.');
-  return String(scaled);
+  const raw = String(amount ?? '').trim();
+  if (!/^\\d+(?:\\.\\d{1,6})?$/.test(raw)) throw badRequest('Payment amount must be a valid USDC amount.');
+  const [whole, fraction = ''] = raw.split('.');
+  const scaled = BigInt(whole) * 1000000n + BigInt((fraction + '000000').slice(0, 6));
+  if (scaled <= 0n) throw badRequest('Payment amount must be greater than zero.');
+  return scaled.toString();
 }
 
 async function assertFeeAccess(feeId, requester) {
