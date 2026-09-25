@@ -13,6 +13,7 @@ export default function StudentPage() {
   const [school, setSchool] = useState(null);
   const [fees, setFees] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [academics, setAcademics] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [walletAddress, setWalletAddress] = useState('');
   const [message, setMessage] = useState('');
@@ -27,13 +28,15 @@ export default function StudentPage() {
     if (!user?.student_id) return;
     setError('');
     try {
-      const [feeResponse, txResponse, schoolResponse] = await Promise.all([
+      const [feeResponse, txResponse, academicResponse, schoolResponse] = await Promise.all([
         api.fees(user.student_id),
         api.transactions(user.student_id),
+        api.academicOverview(user.student_id),
         user.school_id ? api.school(user.school_id) : Promise.resolve({ school: null }),
       ]);
       setFees(Array.isArray(feeResponse?.fees) ? feeResponse.fees : []);
       setTransactions(Array.isArray(txResponse?.transactions) ? txResponse.transactions : []);
+      setAcademics(academicResponse || null);
       setSchool(schoolResponse?.school ?? null);
     } catch (err) {
       setError(err.message || 'Unable to load your campus data.');
@@ -102,6 +105,16 @@ export default function StudentPage() {
           <div className="card"><div className="label">paid fees</div><div className="stat" style={{ marginTop: 8 }}>{paidFees.length}</div><div className="muted">Verified records</div></div>
           <div className="card"><div className="label">wallet</div><div className="stat" style={{ marginTop: 8, fontSize: 14 }}>{walletAddress ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}` : 'Not connected'}</div><div className="muted">Arc Testnet</div></div>
         </div>
+
+        <section className="section">
+          <h2 style={{ marginBottom: 12 }}>Academic center</h2>
+          <div className="grid grid-3">
+            <div className="card"><div className="label">attendance</div><div className="stat" style={{ marginTop: 8 }}>{academics?.summary?.attendanceRate == null ? '—' : `${academics.summary.attendanceRate}%`}</div><div className="muted">Based on recent records</div></div>
+            <div className="card"><div className="label">homework</div><div className="stat" style={{ marginTop: 8 }}>{academics?.homework?.length ?? '—'}</div><div className="muted">Recent campus tasks</div></div>
+            <div className="card"><div className="label">exams</div><div className="stat" style={{ marginTop: 8 }}>{academics?.exams?.length ?? '—'}</div><div className="muted">Scheduled / recorded</div></div>
+          </div>
+          {academics?.homework?.length ? <div className="card" style={{ marginTop: 14, overflowX: 'auto' }}><table className="table"><thead><tr><th>Homework</th><th>Date</th><th>Details</th></tr></thead><tbody>{academics.homework.slice(0, 6).map((item) => <tr key={item.id}><td>{item.title}</td><td>{item.date || '—'}</td><td>{item.content || 'No additional details.'}</td></tr>)}</tbody></table></div> : <div className="empty" style={{ marginTop: 14 }}>No homework has been published yet.</div>}
+        </section>
 
         <section className="section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}>
