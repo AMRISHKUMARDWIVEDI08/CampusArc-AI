@@ -21,6 +21,27 @@ jobs:
       - name: Syntax check
         run: |
           find . -type f -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
+      - name: Database migration smoke test
+        env:
+          JWT_SECRET: campusarc-ci-secret-012345678901234567890123
+          DB_PATH: /tmp/campusarc-ci.sqlite
+        run: npm run db:init
+      - name: Backend boot smoke test
+        env:
+          JWT_SECRET: campusarc-ci-secret-012345678901234567890123
+          DB_PATH: /tmp/campusarc-ci.sqlite
+        run: |
+          node - <<'NODE'
+          const { app } = require('./server');
+          const http = require('http');
+          const server = app.listen(0, async () => {
+            const port = server.address().port;
+            const response = await fetch(`http://127.0.0.1:${port}/health`);
+            const body = await response.json();
+            if (response.status !== 200 || body.product !== 'CampusArc AI') process.exitCode = 1;
+            server.close();
+          });
+          NODE
 
   frontend:
     runs-on: ubuntu-latest
