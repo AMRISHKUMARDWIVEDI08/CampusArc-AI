@@ -59,5 +59,6 @@ export const api = {
   receipt: (feeId) => request('GET', `/api/v1/fees/${feeId}/receipt`),
   transactions: (studentId) => request('GET', `/api/v1/transactions/student/${studentId}`),
   schoolTransactions: (schoolId) => request('GET', `/api/v1/transactions/school/${schoolId}`),
+  academicOverview: (studentId) => request('GET', `/api/v1/academics/student/${studentId}`),
   aiAssistant: (body) => request('POST', '/api/v1/ai/assistant', body),
 };
