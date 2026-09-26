@@ -96,6 +96,9 @@ async function confirmFeePayment(feeId, requester, txHash, walletAddress) {
   if (result.status !== 'success') throw badRequest('The blockchain transaction failed or was reverted.', 409);
 
   let tx = await transactionModel.findByMemoRef(memoRef);
+  if (tx?.tx_hash && tx.tx_hash.toLowerCase() !== txHash.toLowerCase()) {
+    throw badRequest('This fee already has a different payment transaction recorded.', 409);
+  }
   if (!tx) {
     const txId = await transactionModel.create({
       student_id: fee.student_id,
