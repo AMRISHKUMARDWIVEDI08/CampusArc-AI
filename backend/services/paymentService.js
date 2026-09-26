@@ -85,12 +85,22 @@ async function confirmFeePayment(feeId, requester, txHash, walletAddress) {
   const existingTx = await transactionModel.findByTxHash(txHash);
   if (existingTx && existingTx.memo_ref !== memoRef) throw badRequest('This transaction has already been assigned to another fee.', 409);
 
-  const result = await arcService.verifyUsdcTransfer({
-    txHash,
-    sender: walletAddress,
-    destination: fee.school_wallet,
-    amountBaseUnits: toUsdc6(fee.due_amount),
-  });
+  let result;
+  try {
+    result = await arcService.verifyUsdcTransfer({
+      txHash,
+      sender: walletAddress,
+      destination: fee.school_wallet,
+      amountBaseUnits: toUsdc6(fee.due_amount),
+    });
+  } catch (error) {
+    const message = String(error?.message || 'Arc verification failed.');
+    const infrastructureFailure = /RPC|timeout|network|fetch/i.test(message);
+    throw badRequest(
+      message,
+      infrastructureFailure ? 503 : 409
+    );
+  }
 
   if (result.status === 'pending') return { status: 'pending', transactionHash: txHash };
   if (result.status !== 'success') throw badRequest('The blockchain transaction failed or was reverted.', 409);
