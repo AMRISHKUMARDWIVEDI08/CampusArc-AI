@@ -38,8 +38,8 @@ export default function AdminPage() {
 
   useEffect(() => { refresh(); }, [user?.school_id]);
 
-  const verifiedCount = useMemo(() => transactions.filter((tx) => tx.status === 'completed' || tx.status === 'paid').length, [transactions]);
-  const pendingCount = useMemo(() => transactions.filter((tx) => tx.status === 'pending' || tx.status === 'processing' || tx.status === 'under_review').length, [transactions]);
+  const verifiedCount = useMemo(() => transactions.filter((tx) => tx.status === 'paid').length, [transactions]);
+  const pendingCount = useMemo(() => transactions.filter((tx) => tx.status === 'pending' || tx.status === 'processing').length, [transactions]);
   const activeRules = useMemo(() => rules.filter((rule) => rule.is_active).length, [rules]);
 
   if (loading || !user) return <main className="login-wrap"><span className="status"><span className="dot" />Loading admin console…</span></main>;
