@@ -15,7 +15,7 @@ function badRequest(message, statusCode = 400) {
 
 function toUsdc6(amount) {
   const raw = String(amount ?? '').trim();
-  if (!/^\\d+(?:\\.\\d{1,6})?$/.test(raw)) throw badRequest('Payment amount must be a valid USDC amount.');
+  if (!/^\d+(?:\.\d{1,6})?$/.test(raw)) throw badRequest('Payment amount must be a valid USDC amount.');
   const [whole, fraction = ''] = raw.split('.');
   const scaled = BigInt(whole) * 1000000n + BigInt((fraction + '000000').slice(0, 6));
   if (scaled <= 0n) throw badRequest('Payment amount must be greater than zero.');
