@@ -50,7 +50,10 @@ async function ensureSchool(walletAddress) {
 
 async function ensureStudent(userId, schoolId) {
   const found = await db.execute({ sql: 'SELECT id FROM students WHERE user_id=? LIMIT 1', args: [userId] });
-  if (found.rows.length) return Number(found.rows[0].id);
+  if (found.rows.length) {
+    await db.execute({ sql: 'UPDATE students SET school_id=?,updated_at=datetime(\'now\') WHERE id=?', args: [schoolId, found.rows[0].id] });
+    return Number(found.rows[0].id);
+  }
   const created = await db.execute({ sql: 'INSERT INTO students (user_id,school_id,name,roll_no,balance_due) VALUES (?,?,?,?,?)', args: [userId, schoolId, 'Alex Morgan', 'CA-2026-001', 445] });
   return Number(created.lastInsertRowid);
 }
