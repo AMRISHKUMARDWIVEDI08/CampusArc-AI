@@ -6,8 +6,8 @@ const { MESSAGES } = require('../config/constants');
 async function list(req, res) {
   try {
     const schools = await schoolService.listSchools();
-    if (req.user?.school_id) return res.json({ success: true, schools: schools.filter((school) => Number(school.id) === Number(req.user.school_id)) });
-    return res.json({ success: true, schools });
+    if (!req.user?.school_id) return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
+    return res.json({ success: true, schools: schools.filter((school) => Number(school.id) === Number(req.user.school_id)) });
   } catch (err) {
     return res.status(err.statusCode || 500).json({ success: false, message: err.message || MESSAGES.SERVER_ERROR });
   }
