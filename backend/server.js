@@ -30,7 +30,7 @@ app.use(express.json({ limit: '256kb' }));
 app.get('/health', (_req, res) => res.status(200).json({
   success: true,
   product: 'CampusArc AI',
-  network: 'Arc Testnet',
+  network: env.ARC_NETWORK,
   payments: 'USDC on Arc',
   message: 'CampusArc AI API running.'
 }));
