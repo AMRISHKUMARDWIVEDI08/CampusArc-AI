@@ -15,7 +15,12 @@ function validateAssistant(body) {
   const prompt = clean(body.prompt, AI.MAX_PROMPT_CHARS);
   const context = clean(body.context, AI.MAX_INPUT_CHARS);
   const provider = body.provider === 'claude' ? 'claude' : 'gemini';
-  const supportedLocales = ['en','es','fr','de','pt','ar','hi','ja','ko'];
+  // Keep AI locale validation aligned with the frontend's India-first language catalog.
+  const supportedLocales = [
+    'en',
+    'as','bn','brx','doi','gu','hi','kn','ks','kok','mai','ml','mni','mr','ne','or','pa','sa','sat','sd','ta','te','ur',
+    'es','fr','de','pt','ar','ja','ko',
+  ];
   const locale = supportedLocales.includes(String(body.locale || '').toLowerCase()) ? String(body.locale).toLowerCase() : 'en';
   const errors = [];
   if (!prompt) errors.push('prompt is required');
