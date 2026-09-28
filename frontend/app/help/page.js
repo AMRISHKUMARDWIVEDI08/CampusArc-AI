@@ -8,7 +8,7 @@ const items = [
   ['Payments', 'A fee can only become completed after the backend receives and verifies the payment result.'],
   ['Wallets', 'Wallet connection is separate from authentication. Never share a seed phrase or private key.'],
   ['AI', 'AI features will clearly show whether they are connected to a real model or unavailable.'],
-  ['Language', 'The app is designed with internationalization support; Hindi is intentionally excluded from the product language set.'],
+  ['Language', 'The app defaults to English and includes a language selector. Supported translations can be expanded without changing the core product.'],
   ['Voice', 'Important confirmations can use the device/browser speech capability where supported. Core text controls always remain available.'],
 ];
 
