@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import TopBar from '../../components/dashboard/TopBar';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../lib/api';
-import { connectWallet, sendUsdcTransfer, signWalletChallenge, ARC_EXPLORER } from '../../lib/wallet';
+import { connectWallet, discoverWallets, getWalletLabel, rememberWallet, sendUsdcTransfer, signWalletChallenge, ARC_EXPLORER } from '../../lib/wallet';
 
 export default function StudentPage() {
   const router = useRouter();
@@ -16,6 +16,10 @@ export default function StudentPage() {
   const [academics, setAcademics] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [walletAddress, setWalletAddress] = useState('');
+  const [walletProviders, setWalletProviders] = useState([]);
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [walletBusy, setWalletBusy] = useState(false);
+  const [pendingWalletAction, setPendingWalletAction] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -45,30 +49,61 @@ export default function StudentPage() {
 
   useEffect(() => { refreshPortal(); }, [user?.student_id, user?.school_id]);
 
+  useEffect(() => {
+    discoverWallets().then(setWalletProviders).catch(() => setWalletProviders([]));
+  }, []);
+
   const pendingFees = useMemo(() => fees.filter((f) => f.status === 'pending'), [fees]);
   const paidFees = useMemo(() => fees.filter((f) => f.status === 'paid'), [fees]);
 
-  async function linkWallet() {
+  async function openWalletChooser(action = null) {
+    setError('');
+    const wallets = await discoverWallets();
+    setWalletProviders(wallets);
+    setPendingWalletAction(action);
+    if (wallets.length === 1) {
+      await selectWallet(wallets[0], action);
+      return;
+    }
+    setWalletModalOpen(true);
+  }
+
+  async function selectWallet(detail, action = pendingWalletAction) {
+    setWalletBusy(true);
     setError('');
     try {
-      const connected = await connectWallet();
-      const challenge = await api.walletChallenge(connected.address);
-      const signature = await signWalletChallenge(connected.provider, challenge.message);
-      const response = await api.linkWallet({ walletAddress: connected.address, nonce: challenge.nonce, signature });
-      setWalletAddress(response.user?.wallet_address || connected.address);
-      setMessage('Wallet linked securely to your CampusArc account.');
+      const connected = await connectWallet(detail?.provider);
+      rememberWallet(detail);
+      setWalletAddress(connected.address);
+      setWalletModalOpen(false);
+      setMessage(`${getWalletLabel(detail)} connected to CampusArc.`);
+      if (action?.type === 'link') await finishWalletLink(connected);
+      if (action?.type === 'pay') await executePayment(action.feeId, connected);
     } catch (err) {
-      setError(err?.message || 'Wallet linking failed.');
+      setError(err?.message || 'Wallet connection failed.');
+    } finally {
+      setWalletBusy(false);
+      setPendingWalletAction(null);
     }
   }
 
-  async function pay(feeId) {
+  async function finishWalletLink(connected) {
+    const challenge = await api.walletChallenge(connected.address);
+    const signature = await signWalletChallenge(connected.provider, challenge.message);
+    const response = await api.linkWallet({ walletAddress: connected.address, nonce: challenge.nonce, signature });
+    setWalletAddress(response.user?.wallet_address || connected.address);
+    setMessage('Wallet linked securely to your CampusArc account.');
+  }
+
+  async function linkWallet() {
+    await openWalletChooser({ type: 'link' });
+  }
+
+  async function executePayment(feeId, connected) {
     setBusyId(feeId);
     setMessage('');
     setError('');
     try {
-      const connected = await connectWallet();
-      setWalletAddress(connected.address);
       const prepared = await api.payFee(feeId, connected.address);
       if (!prepared.paymentRequired) {
         setMessage(`Payment status: ${prepared.status}.`);
@@ -93,6 +128,33 @@ export default function StudentPage() {
     }
   }
 
+  async function pay(feeId) {
+    setMessage('');
+    setError('');
+    if (!walletAddress) {
+      await openWalletChooser({ type: 'pay', feeId });
+      return;
+    }
+    try {
+      const wallets = await discoverWallets();
+      const preferred = typeof window !== 'undefined' ? window.localStorage.getItem('campusarc-selected-wallet-rdns') : null;
+      const selected = wallets.find((item) => preferred && item.info?.rdns === preferred) || wallets[0];
+      if (!selected) {
+        await openWalletChooser({ type: 'pay', feeId });
+        return;
+      }
+      const connected = await connectWallet(selected.provider);
+      setWalletAddress(connected.address);
+      await executePayment(feeId, connected);
+    } catch (err) {
+      setError(err?.message || 'Wallet payment could not be started.');
+    }
+  }
+
+  function payWithPaytmDemo() {
+    setMessage('Paytm is the second payment rail. Demo mode only — no INR payment is processed yet.');
+  }
+
   if (loading || !user) return <main className="login-wrap"><span className="status"><span className="dot" />Loading student portal…</span></main>;
   if (user.role !== 'student') return null;
 
@@ -106,7 +168,7 @@ export default function StudentPage() {
           <p style={{ marginTop: 10 }}>{school?.school_name || 'Your campus'} · academics, fees and verified payments in one place.</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 18 }}>
             <button className="btn btn-primary" onClick={() => router.push('/ai')}>Ask CampusArc AI</button>
-            <button className="btn" onClick={linkWallet}>Link Arc wallet</button>
+            <button className="btn" onClick={linkWallet}>Connect wallet</button>
             <button className="btn" onClick={() => router.push('/help')}>Help Center</button>
             <button className="btn" onClick={refreshPortal}>Refresh</button>
           </div>
@@ -114,6 +176,26 @@ export default function StudentPage() {
 
         {message ? <div className="card" role="status" style={{ marginBottom: 14 }}>{message}</div> : null}
         {error ? <div className="alert" role="alert" style={{ marginBottom: 14 }}>{error}</div> : null}
+
+        <section className="card wallet-panel" style={{ marginBottom: 18 }}>
+          <div>
+            <span className="eyebrow">arc wallet</span>
+            <h2 style={{ marginTop: 8 }}>Wallet-first payments</h2>
+            <p className="muted" style={{ marginTop: 7 }}>Connect the wallet you already use. CampusArc is not locked to MetaMask.</p>
+          </div>
+          <div className="wallet-panel-grid">
+            <div className="wallet-status-card">
+              <span className="label">connected wallet</span>
+              <strong>{walletAddress ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}` : 'Not connected'}</strong>
+              <span className="muted">Arc network</span>
+            </div>
+            <div className="wallet-status-card">
+              <span className="label">wallet discovery</span>
+              <strong>{walletProviders.length ? `${walletProviders.length} wallet${walletProviders.length === 1 ? '' : 's'} detected` : 'Ready to detect wallets'}</strong>
+              <span className="muted">Extensions + wallet-app browsers</span>
+            </div>
+          </div>
+        </section>
 
         <div className="grid grid-3">
           <div className="card"><div className="label">pending fees</div><div className="stat" style={{ marginTop: 8 }}>{pendingFees.length}</div><div className="muted">Needs attention</div></div>
@@ -138,7 +220,7 @@ export default function StudentPage() {
           {!fees.length ? <div className="empty">No fee records are available for this student.</div> : (
             <div className="card" style={{ overflowX: 'auto' }}>
               <table className="table"><thead><tr><th>Fee</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody>
-                {fees.map((fee) => <tr key={fee.id}><td>Fee #{fee.id}</td><td>{fee.due_amount ?? '—'} USDC</td><td>{fee.status}</td><td>{fee.status === 'pending' ? <button className="btn btn-primary" disabled={busyId === fee.id} onClick={() => pay(fee.id)}>{busyId === fee.id ? 'Processing…' : 'Pay with wallet'}</button> : <span className="muted">No action</span>}</td></tr>)}
+                {fees.map((fee) => <tr key={fee.id}><td>Fee #{fee.id}</td><td>{fee.due_amount ?? '—'} USDC</td><td>{fee.status}</td><td>{fee.status === 'pending' ? <div className="payment-actions"><button className="btn btn-primary" disabled={busyId === fee.id} onClick={() => pay(fee.id)}>{busyId === fee.id ? 'Processing…' : '1 · Pay with wallet'}</button><button className="btn paytm-demo-btn" onClick={payWithPaytmDemo}>2 · Paytm <span>Demo</span></button></div> : <span className="muted">No action</span>}</td></tr>)}
               </tbody></table>
             </div>
           )}
@@ -155,6 +237,30 @@ export default function StudentPage() {
           )}
         </section>
       </main>
+
+      {walletModalOpen ? (
+        <div className="wallet-modal-backdrop" role="dialog" aria-modal="true" aria-label="Choose a wallet" onClick={() => setWalletModalOpen(false)}>
+          <div className="wallet-modal card" onClick={(event) => event.stopPropagation()}>
+            <div className="wallet-modal-head">
+              <div>
+                <span className="eyebrow">wallet connection</span>
+                <h2 style={{ marginTop: 7 }}>Choose your wallet</h2>
+                <p className="muted" style={{ marginTop: 7 }}>CampusArc uses standard wallet discovery instead of assuming MetaMask.</p>
+              </div>
+              <button className="btn" onClick={() => setWalletModalOpen(false)} aria-label="Close wallet chooser">Close</button>
+            </div>
+            <div className="wallet-list">
+              {walletProviders.map((detail) => (
+                <button className="wallet-option" key={detail.info.uuid} disabled={walletBusy} onClick={() => selectWallet(detail)}>
+                  {detail.info.icon ? <img src={detail.info.icon} alt="" width="40" height="40" /> : <span className="wallet-icon">{getWalletLabel(detail).slice(0, 1)}</span>}
+                  <span><strong>{getWalletLabel(detail)}</strong><small>Connect to Arc</small></span>
+                </button>
+              ))}
+              {!walletProviders.length ? <div className="empty">No injected wallet was detected. On Android/iOS, open CampusArc AI from your wallet app's built-in browser.</div> : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
