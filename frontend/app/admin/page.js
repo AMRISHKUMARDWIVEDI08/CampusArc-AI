@@ -70,8 +70,8 @@ export default function AdminPage() {
         <section className="section">
           <div className="grid grid-3">
             <section className="card"><div className="label">school</div><h2 style={{ marginTop: 8 }}>{school?.school_name ?? 'School not loaded'}</h2><p style={{ marginTop: 8 }}>School ID: {school?.id ?? user.school_id ?? '—'}</p></section>
-            <section className="card"><div className="label">Arc payment wallet</div><h2 style={{ marginTop: 8 }}>{school?.wallet_address ? `${school.wallet_address.slice(0, 8)}…${school.wallet_address.slice(-6)}` : 'Not configured'}</h2><p style={{ marginTop: 8 }}>Student wallets pay this school-controlled EVM address directly on Arc Testnet.</p></section><section className="card"><div className="label">student join code</div><h2 className="mono" style={{ marginTop: 8, fontSize: 20 }}>{school?.join_code || 'Not available'}</h2><p style={{ marginTop: 8 }}>Share this code only with students who should join this school.</p></section>
-            <section className="card"><div className="label">demo status</div><h2 style={{ marginTop: 8 }}>Arc-only</h2><p style={{ marginTop: 8 }}>No Circle API is required for the payment flow.</p></section>
+            <section className="card"><div className="label">Arc payment wallet</div><h2 style={{ marginTop: 8 }}>{school?.wallet_address ? `${school.wallet_address.slice(0, 8)}…${school.wallet_address.slice(-6)}` : 'Not configured'}</h2><p style={{ marginTop: 8 }}>Student wallets pay this school-controlled EVM address directly on configured Arc network.</p></section><section className="card"><div className="label">student join code</div><h2 className="mono" style={{ marginTop: 8, fontSize: 20 }}>{school?.join_code || 'Not available'}</h2><p style={{ marginTop: 8 }}>Share this code only with students who should join this school.</p></section>
+            <section className="card"><div className="label">demo status</div><h2 style={{ marginTop: 8 }}>Arc payment rail</h2><p style={{ marginTop: 8 }}>No Circle API is required for the payment flow.</p></section>
           </div>
         </section>
 
