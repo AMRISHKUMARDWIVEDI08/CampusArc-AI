@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import TopBar from '../../components/dashboard/TopBar';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../lib/api';
-import { connectWallet, sendUsdcTransfer, signWalletChallenge } from '../../lib/wallet';
+import { connectWallet, sendUsdcTransfer, signWalletChallenge, ARC_EXPLORER } from '../../lib/wallet';
 
 export default function StudentPage() {
   const router = useRouter();
@@ -149,7 +149,7 @@ export default function StudentPage() {
           {!transactions.length ? <div className="empty">No payment transactions yet.</div> : (
             <div className="card" style={{ overflowX: 'auto' }}>
               <table className="table"><thead><tr><th>Amount</th><th>Status</th><th>Transaction</th></tr></thead><tbody>
-                {transactions.slice(0, 8).map((tx) => <tr key={tx.id}><td>{tx.amount} {tx.currency}</td><td>{tx.status}</td><td>{tx.tx_hash ? `${tx.tx_hash.slice(0, 10)}…${tx.tx_hash.slice(-6)}` : 'Awaiting verification'}</td></tr>)}
+                {transactions.slice(0, 8).map((tx) => <tr key={tx.id}><td>{tx.amount} {tx.currency}</td><td>{tx.status}</td><td>{tx.tx_hash ? <a href={`${ARC_EXPLORER}/tx/${tx.tx_hash}`} target="_blank" rel="noreferrer" className="mono" style={{ color: 'var(--teal)' }}>{tx.tx_hash.slice(0, 10)}…{tx.tx_hash.slice(-6)}</a> : 'Awaiting verification'}</td></tr>)}
               </tbody></table>
             </div>
           )}
