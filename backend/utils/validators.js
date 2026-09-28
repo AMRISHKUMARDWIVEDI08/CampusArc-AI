@@ -1,47 +1,7 @@
 'use strict';
-
-const { VALIDATION } = require('../config/constants');
-
-function sanitize(value) {
-  if (typeof value !== 'string') return '';
-  return value.replace(/[\x00-\x1F\x7F]/g, '').trim();
-}
-
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
-}
-
-function validateLogin(body) {
-  const errors = [];
-  const login = sanitize(body?.login || '');
-  const password = sanitize(body?.password || '');
-
-  if (!login) errors.push('Username or email is required.');
-  if (!password) errors.push('Password is required.');
-  else if (password.length > VALIDATION.PASSWORD_MAX) errors.push(`Password must not exceed ${VALIDATION.PASSWORD_MAX} characters.`);
-
-  return { valid: errors.length === 0, errors, data: { login, password } };
-}
-
-function validateRegister(body) {
-  const errors = [];
-  const username = sanitize(body?.username || '');
-  const email = sanitize(body?.email || '');
-  const password = sanitize(body?.password || '');
-
-  if (!username) errors.push('Username is required.');
-  else if (username.length < VALIDATION.USERNAME_MIN) errors.push(`Username must be at least ${VALIDATION.USERNAME_MIN} characters.`);
-  else if (username.length > VALIDATION.USERNAME_MAX) errors.push(`Username must not exceed ${VALIDATION.USERNAME_MAX} characters.`);
-  else if (!/^[a-zA-Z0-9_]+$/.test(username)) errors.push('Username may only contain letters, numbers, and underscores.');
-
-  if (email && !isValidEmail(email)) errors.push('Email address is not valid.');
-  else if (email && email.length > VALIDATION.EMAIL_MAX) errors.push(`Email must not exceed ${VALIDATION.EMAIL_MAX} characters.`);
-
-  if (!password) errors.push('Password is required.');
-  else if (password.length < VALIDATION.PASSWORD_MIN) errors.push(`Password must be at least ${VALIDATION.PASSWORD_MIN} characters.`);
-  else if (password.length > VALIDATION.PASSWORD_MAX) errors.push(`Password must not exceed ${VALIDATION.PASSWORD_MAX} characters.`);
-
-  return { valid: errors.length === 0, errors, data: { username, email: email || null, password } };
-}
-
-module.exports = { sanitize, isValidEmail, validateLogin, validateRegister };
+const {VALIDATION}=require('../config/constants');
+function sanitize(value){if(typeof value!=='string')return '';return value.replace(/[\x00-\x1F\x7F]/g,'').trim();}
+function isValidEmail(email){return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);}
+function validateLogin(body){const errors=[];const login=sanitize(body?.login||'');const password=sanitize(body?.password||'');if(!login)errors.push('Username or email is required.');if(!password)errors.push('Password is required.');else if(password.length>VALIDATION.PASSWORD_MAX)errors.push('Password must not exceed '+VALIDATION.PASSWORD_MAX+' characters.');return{valid:errors.length===0,errors,data:{login,password}};}
+function validateRegister(body){const errors=[];const username=sanitize(body?.username||'');const email=sanitize(body?.email||'');const password=sanitize(body?.password||'');const schoolCode=sanitize(body?.school_code||body?.schoolCode||'').toUpperCase();const name=sanitize(body?.name||username);const rollNo=sanitize(body?.roll_no||body?.rollNo||'');const className=sanitize(body?.class_name||body?.className||'');const section=sanitize(body?.section||'');const guardianName=sanitize(body?.guardian_name||body?.guardianName||'');const guardianEmail=sanitize(body?.guardian_email||body?.guardianEmail||'');const phone=sanitize(body?.phone||'');if(!username)errors.push('Username is required.');else if(username.length<VALIDATION.USERNAME_MIN)errors.push('Username must be at least '+VALIDATION.USERNAME_MIN+' characters.');else if(username.length>VALIDATION.USERNAME_MAX)errors.push('Username must not exceed '+VALIDATION.USERNAME_MAX+' characters.');else if(!/^[a-zA-Z0-9_]+$/.test(username))errors.push('Username may only contain letters, numbers, and underscores.');if(email&&!isValidEmail(email))errors.push('Email address is not valid.');else if(email&&email.length>VALIDATION.EMAIL_MAX)errors.push('Email must not exceed '+VALIDATION.EMAIL_MAX+' characters.');if(!password)errors.push('Password is required.');else if(password.length<VALIDATION.PASSWORD_MIN)errors.push('Password must be at least '+VALIDATION.PASSWORD_MIN+' characters.');else if(password.length>VALIDATION.PASSWORD_MAX)errors.push('Password must not exceed '+VALIDATION.PASSWORD_MAX+' characters.');if(!schoolCode)errors.push('School join code is required.');if(!name||name.length<2)errors.push('Student name is required.');if(guardianEmail&&!isValidEmail(guardianEmail))errors.push('Guardian email address is not valid.');return{valid:errors.length===0,errors,data:{username,email:email||null,password,schoolCode,name,rollNo:rollNo||null,className:className||null,section:section||null,guardianName:guardianName||null,guardianEmail:guardianEmail||null,phone:phone||null}};}
+module.exports={sanitize,isValidEmail,validateLogin,validateRegister};
