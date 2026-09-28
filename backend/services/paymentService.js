@@ -4,6 +4,7 @@ const feeModel = require('../models/feeModel');
 const studentModel = require('../models/studentModel');
 const transactionModel = require('../models/transactionModel');
 const { ARC, ROLES } = require('../config/constants');
+const env = require('../config/env');
 const arcService = require('./blockchain/arcService');
 const crypto = require('crypto');
 
@@ -63,9 +64,9 @@ async function payFee(feeId, requester, walletAddress) {
     transactionId: txId,
     status: 'payment_required',
     paymentRequired: true,
-    network: 'Arc Testnet',
-    chainId: ARC.CHAIN_ID,
-    tokenAddress: ARC.USDC_TOKEN,
+    network: env.ARC_NETWORK,
+    chainId: env.ARC_CHAIN_ID || ARC.CHAIN_ID,
+    tokenAddress: String(env.ARC_USDC_TOKEN || ARC.USDC_TOKEN).toLowerCase(),
     tokenDecimals: ARC.USDC_DECIMALS,
     destinationAddress: fee.school_wallet.toLowerCase(),
     amount: Number(fee.due_amount),
