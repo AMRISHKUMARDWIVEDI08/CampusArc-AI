@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import LanguageSelector from '../../components/i18n/LanguageSelector';
 
 const items = [
   ['Getting started', 'Choose Student or School Admin, then sign in with your campus credentials.'],
@@ -17,7 +18,7 @@ export default function HelpPage() {
   const [query, setQuery] = useState('');
   const filtered = items.filter(([title, text]) => `${title} ${text}`.toLowerCase().includes(query.toLowerCase()));
   return (
-    <main className="page">
+    <main className="page"><div style={{position:'fixed',top:16,right:16,zIndex:30}}><LanguageSelector /></div>
       <div className="shell hero" style={{ paddingBottom: 26 }}>
         <button className="btn" onClick={() => router.back()}>← Back</button>
         <div style={{ marginTop: 28 }}><span className="eyebrow">help desk</span><h1 style={{ fontSize: 44, marginTop: 12 }}>Learn how CampusArc AI works.</h1><p style={{ marginTop: 10 }}>A simple guide for first-time users. Core actions remain understandable without blockchain knowledge.</p></div>
