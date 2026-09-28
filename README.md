@@ -28,3 +28,8 @@ Active development. Production readiness is not claimed until the QA Release Gat
 - Wallet connection is not user authentication; production wallet login must use a signed challenge.
 - Blockchain payment status is only considered complete after actual on-chain verification and reconciliation.
 - Vercel deployment remains deferred until build/config/runtime validation is complete.
+
+
+## Arc production posture
+
+Arc Mainnet is live and uses chain ID 5042, with USDC as native gas. CampusArc keeps development on Arc Testnet by default and automatically selects Arc Mainnet defaults when `NODE_ENV=production`; deployment variables can override network endpoints explicitly. The payment path uses the standard ERC-20 USDC interface for application payments while respecting Arc's native-USDC model. Arc is EVM-compatible, and existing ethers/EIP-1193 patterns are supported. citeturn311399search1turn155367search0
