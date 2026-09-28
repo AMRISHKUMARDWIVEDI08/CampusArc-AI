@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import TopBar from '../../components/dashboard/TopBar';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../lib/api';
-import { connectWallet, sendUsdcTransfer } from '../../lib/wallet';
+import { connectWallet, sendUsdcTransfer, signWalletChallenge } from '../../lib/wallet';
 
 export default function StudentPage() {
   const router = useRouter();
@@ -47,6 +47,20 @@ export default function StudentPage() {
 
   const pendingFees = useMemo(() => fees.filter((f) => f.status === 'pending'), [fees]);
   const paidFees = useMemo(() => fees.filter((f) => f.status === 'paid'), [fees]);
+
+  async function linkWallet() {
+    setError('');
+    try {
+      const connected = await connectWallet();
+      const challenge = await api.walletChallenge(connected.address);
+      const signature = await signWalletChallenge(connected.provider, challenge.message);
+      const response = await api.linkWallet({ walletAddress: connected.address, nonce: challenge.nonce, signature });
+      setWalletAddress(response.user?.wallet_address || connected.address);
+      setMessage('Wallet linked securely to your CampusArc account.');
+    } catch (err) {
+      setError(err?.message || 'Wallet linking failed.');
+    }
+  }
 
   async function pay(feeId) {
     setBusyId(feeId);
@@ -92,6 +106,7 @@ export default function StudentPage() {
           <p style={{ marginTop: 10 }}>{school?.school_name || 'Your campus'} · academics, fees and verified payments in one place.</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 18 }}>
             <button className="btn btn-primary" onClick={() => router.push('/ai')}>Ask CampusArc AI</button>
+            <button className="btn" onClick={linkWallet}>Link Arc wallet</button>
             <button className="btn" onClick={() => router.push('/help')}>Help Center</button>
             <button className="btn" onClick={refreshPortal}>Refresh</button>
           </div>
