@@ -14,7 +14,7 @@ const VALIDATION = {
 
 const ARC = {
   CHAIN_ID: 5042002,
-  RPC_URL: 'https://rpc.testnet.arc.network',
+  RPC_URL: 'https://rpc.testnet.arc.io',
   EXPLORER_URL: 'https://testnet.arcscan.app',
   USDC_TOKEN: '0x3600000000000000000000000000000000000000'.toLowerCase(),
   USDC_DECIMALS: 6,
