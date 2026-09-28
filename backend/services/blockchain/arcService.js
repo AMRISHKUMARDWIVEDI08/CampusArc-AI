@@ -92,7 +92,7 @@ async function verifyUsdcTransfer({ txHash, sender, destination, amountBaseUnits
   const parsedInput = parseErc20TransferInput(tx.input);
   const expectedAmount = BigInt(String(amountBaseUnits));
 
-  if (chainId !== ARC.CHAIN_ID) throw new Error('Transaction was sent on the wrong network.');
+  if (chainId !== Number(env.ARC_CHAIN_ID || ARC.CHAIN_ID)) throw new Error('Transaction was sent on the wrong network.');
   if (txFrom !== expectedSender) throw new Error('Transaction sender does not match connected wallet.');
   if (txTo !== String(env.ARC_USDC_TOKEN || ARC.USDC_TOKEN).toLowerCase()) throw new Error('Transaction token contract is not the Arc USDC contract.');
   if (!parsedInput || parsedInput.recipient !== expectedDestination || parsedInput.amount !== expectedAmount) {
