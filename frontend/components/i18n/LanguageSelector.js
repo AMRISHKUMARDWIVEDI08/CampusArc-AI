@@ -25,7 +25,18 @@ export default function LanguageSelector() {
     <label className="language-selector">
       <span className="sr-only">{t.language}</span>
       <select aria-label={t.language} value={locale} onChange={(e) => changeLanguage(e.target.value)}>
-        {SUPPORTED_LOCALES.map((item) => <option key={item.code} value={item.code}>{item.nativeName}</option>)}
+        <optgroup label="India">
+          {SUPPORTED_LOCALES.filter((item) => item.code === 'en' || [
+            'as','bn','brx','doi','gu','hi','kn','ks','kok','mai','ml','mni','mr','ne','or','pa','sa','sat','sd','ta','te','ur'
+          ].includes(item.code)).map((item) => (
+            <option key={item.code} value={item.code}>{item.nativeName}</option>
+          ))}
+        </optgroup>
+        <optgroup label="International">
+          {SUPPORTED_LOCALES.filter((item) => ['es','fr','de','pt','ar','ja','ko'].includes(item.code)).map((item) => (
+            <option key={item.code} value={item.code}>{item.nativeName}</option>
+          ))}
+        </optgroup>
       </select>
     </label>
   );
