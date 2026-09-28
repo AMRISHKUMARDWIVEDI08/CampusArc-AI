@@ -1,13 +1,39 @@
 'use client';
 
 export const SUPPORTED_LOCALES = [
+  // English-first global UI.
   { code: 'en', name: 'English', nativeName: 'English', dir: 'ltr' },
+
+  // India: all 22 languages in the Eighth Schedule of the Constitution.
+  { code: 'as', name: 'Assamese', nativeName: 'অসমীয়া', dir: 'ltr' },
+  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা', dir: 'ltr' },
+  { code: 'brx', name: 'Bodo', nativeName: 'बड़ो', dir: 'ltr' },
+  { code: 'doi', name: 'Dogri', nativeName: 'डोगरी', dir: 'ltr' },
+  { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી', dir: 'ltr' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', dir: 'ltr' },
+  { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ', dir: 'ltr' },
+  { code: 'ks', name: 'Kashmiri', nativeName: 'कॉशुर / کٲشُر', dir: 'rtl' },
+  { code: 'kok', name: 'Konkani', nativeName: 'कोंकणी', dir: 'ltr' },
+  { code: 'mai', name: 'Maithili', nativeName: 'मैथिली', dir: 'ltr' },
+  { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം', dir: 'ltr' },
+  { code: 'mni', name: 'Meitei', nativeName: 'মৈতৈলোন্ / ꯃꯤꯇꯩꯂꯣꯟ', dir: 'ltr' },
+  { code: 'mr', name: 'Marathi', nativeName: 'मराठी', dir: 'ltr' },
+  { code: 'ne', name: 'Nepali', nativeName: 'नेपाली', dir: 'ltr' },
+  { code: 'or', name: 'Odia', nativeName: 'ଓଡ଼ିଆ', dir: 'ltr' },
+  { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ', dir: 'ltr' },
+  { code: 'sa', name: 'Sanskrit', nativeName: 'संस्कृतम्', dir: 'ltr' },
+  { code: 'sat', name: 'Santali', nativeName: 'ᱥᱟᱱᱛᱟᱲᱤ', dir: 'ltr' },
+  { code: 'sd', name: 'Sindhi', nativeName: 'सिन्धी / سنڌي', dir: 'rtl' },
+  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', dir: 'ltr' },
+  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', dir: 'ltr' },
+  { code: 'ur', name: 'Urdu', nativeName: 'اردو', dir: 'rtl' },
+
+  // Additional international languages.
   { code: 'es', name: 'Spanish', nativeName: 'Español', dir: 'ltr' },
   { code: 'fr', name: 'French', nativeName: 'Français', dir: 'ltr' },
   { code: 'de', name: 'German', nativeName: 'Deutsch', dir: 'ltr' },
   { code: 'pt', name: 'Portuguese', nativeName: 'Português', dir: 'ltr' },
   { code: 'ar', name: 'Arabic', nativeName: 'العربية', dir: 'rtl' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', dir: 'ltr' },
   { code: 'ja', name: 'Japanese', nativeName: '日本語', dir: 'ltr' },
   { code: 'ko', name: 'Korean', nativeName: '한국어', dir: 'ltr' },
 ];
