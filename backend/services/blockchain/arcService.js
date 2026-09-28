@@ -88,18 +88,18 @@ async function verifyUsdcTransfer({ txHash, sender, destination, amountBaseUnits
   const expectedDestination = normalizeAddress(destination);
   const txFrom = normalizeAddress(tx.from);
   const txTo = normalizeAddress(tx.to);
-  const chainId = tx.chainId ? parseInt(tx.chainId, 16) : ARC.CHAIN_ID;
+  const chainId = tx.chainId ? parseInt(tx.chainId, 16) : Number(env.ARC_CHAIN_ID || ARC.CHAIN_ID);
   const parsedInput = parseErc20TransferInput(tx.input);
   const expectedAmount = BigInt(String(amountBaseUnits));
 
   if (chainId !== ARC.CHAIN_ID) throw new Error('Transaction was sent on the wrong network.');
   if (txFrom !== expectedSender) throw new Error('Transaction sender does not match connected wallet.');
-  if (txTo !== ARC.USDC_TOKEN) throw new Error('Transaction token contract is not the Arc USDC contract.');
+  if (txTo !== String(env.ARC_USDC_TOKEN || ARC.USDC_TOKEN).toLowerCase()) throw new Error('Transaction token contract is not the Arc USDC contract.');
   if (!parsedInput || parsedInput.recipient !== expectedDestination || parsedInput.amount !== expectedAmount) {
     throw new Error('Transaction amount or destination does not match this fee.');
   }
 
-  const matchingLog = (receipt.logs || []).map(parseTransferLog).find((log) => log && log.token === ARC.USDC_TOKEN && log.from === expectedSender && log.to === expectedDestination && log.amount === expectedAmount);
+  const matchingLog = (receipt.logs || []).map(parseTransferLog).find((log) => log && log.token === String(env.ARC_USDC_TOKEN || ARC.USDC_TOKEN).toLowerCase() && log.from === expectedSender && log.to === expectedDestination && log.amount === expectedAmount);
   if (!matchingLog) throw new Error('No matching USDC transfer event was found in the confirmed transaction.');
 
   return { confirmed: true, status: 'success', receipt, blockNumber: parseInt(receipt.blockNumber, 16) };
