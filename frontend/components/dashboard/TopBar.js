@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import LanguageSelector from '../i18n/LanguageSelector';
+import LocaleText from '../i18n/LocaleText';
 
 export default function TopBar({ user, onLogout }) {
   return (
@@ -11,8 +13,8 @@ export default function TopBar({ user, onLogout }) {
           <span>CampusArc AI</span>
         </Link>
         <div className="top-actions">
-          <span className="status"><span className="dot" aria-hidden="true" />{user?.role ?? 'guest'}</span>
-          {user ? <button className="btn" onClick={onLogout}>Sign out</button> : null}
+          <span className="status"><span className="dot" aria-hidden="true" /><LocaleText k={user?.role ?? 'guest'} fallback={user?.role ?? 'guest'} /></span>
+          <LanguageSelector />{user ? <button className="btn" onClick={onLogout}><LocaleText k="signOut" fallback="Sign out" /></button> : null}
         </div>
       </div>
     </header>
