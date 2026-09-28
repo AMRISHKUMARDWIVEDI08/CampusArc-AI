@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import TopBar from '../../components/dashboard/TopBar';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../lib/api';
+import { getLocale } from '../../lib/i18n';
 
 export default function AIPage() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function AIPage() {
     if (!prompt.trim()) { setError('Enter a question first.'); return; }
     setBusy(true);
     try {
-      const result = await api.aiAssistant({ prompt: prompt.trim(), provider });
+      const result = await api.aiAssistant({ prompt: prompt.trim(), provider, locale: getLocale() });
       setAnswer(result.answer || 'No answer was returned.');
     } catch (e) { setError(e.message || 'AI request failed.'); }
     finally { setBusy(false); }
