@@ -15,11 +15,13 @@ function validateAssistant(body) {
   const prompt = clean(body.prompt, AI.MAX_PROMPT_CHARS);
   const context = clean(body.context, AI.MAX_INPUT_CHARS);
   const provider = body.provider === 'claude' ? 'claude' : 'gemini';
+  const supportedLocales = ['en','es','fr','de','pt','ar','hi','ja','ko'];
+  const locale = supportedLocales.includes(String(body.locale || '').toLowerCase()) ? String(body.locale).toLowerCase() : 'en';
   const errors = [];
   if (!prompt) errors.push('prompt is required');
   if (prompt.length > AI.MAX_PROMPT_CHARS) errors.push('prompt is too long');
   if (detectInjection(prompt)) errors.push('prompt contains unsupported instruction content');
-  return { valid: errors.length === 0, errors, data: { prompt, context, provider } };
+  return { valid: errors.length === 0, errors, data: { prompt, context, provider, locale } };
 }
 
 function sanitizeResponse(text) {
