@@ -1,12 +1,2 @@
 'use strict';
-const { Router } = require('express');
-const rateLimit = require('express-rate-limit');
-const authController = require('../../../controllers/authController');
-const { authenticate } = require('../../../middleware/auth');
-const router = Router();
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests from this IP. Please try again in 15 minutes.' } });
-router.post('/register', authLimiter, authController.register);
-router.post('/login', authLimiter, authController.login);
-router.get('/me', authenticate, authController.me);
-router.post('/logout', authenticate, authController.logout);
-module.exports = router;
+const {Router}=require('express');const rateLimit=require('express-rate-limit');const authController=require('../../../controllers/authController');const walletAuthController=require('../../../controllers/walletAuthController');const {authenticate}=require('../../../middleware/auth');const router=Router();const authLimiter=rateLimit({windowMs:15*60*1000,max:10,standardHeaders:true,legacyHeaders:false,message:{success:false,message:'Too many requests from this IP. Please try again in 15 minutes.'}});router.post('/register',authLimiter,authController.register);router.post('/login',authLimiter,authController.login);router.post('/wallet/challenge',authLimiter,walletAuthController.challenge);router.post('/wallet/login',authLimiter,walletAuthController.login);router.post('/wallet/link',authenticate,authLimiter,walletAuthController.link);router.get('/me',authenticate,authController.me);router.post('/logout',authenticate,authController.logout);module.exports=router;
