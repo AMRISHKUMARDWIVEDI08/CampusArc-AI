@@ -118,7 +118,7 @@ export default function StudentPage() {
         <div className="grid grid-3">
           <div className="card"><div className="label">pending fees</div><div className="stat" style={{ marginTop: 8 }}>{pendingFees.length}</div><div className="muted">Needs attention</div></div>
           <div className="card"><div className="label">paid fees</div><div className="stat" style={{ marginTop: 8 }}>{paidFees.length}</div><div className="muted">Verified records</div></div>
-          <div className="card"><div className="label">wallet</div><div className="stat" style={{ marginTop: 8, fontSize: 14 }}>{walletAddress ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}` : 'Not connected'}</div><div className="muted">Arc Testnet</div></div>
+          <div className="card"><div className="label">wallet</div><div className="stat" style={{ marginTop: 8, fontSize: 14 }}>{walletAddress ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}` : 'Not connected'}</div><div className="muted">configured Arc network</div></div>
         </div>
 
         <section className="section">
