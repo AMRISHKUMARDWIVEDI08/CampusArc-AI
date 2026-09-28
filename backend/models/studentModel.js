@@ -1,7 +1,8 @@
 'use strict';
-const { db } = require('../config/db');
-async function findById(id) { const r=await db.execute({sql:'SELECT * FROM students WHERE id=? LIMIT 1',args:[id]}); return r.rows[0]||null; }
-async function findByUserId(userId) { const r=await db.execute({sql:'SELECT * FROM students WHERE user_id=? LIMIT 1',args:[userId]}); return r.rows[0]||null; }
-async function findBySchool(schoolId) { const r=await db.execute({sql:'SELECT * FROM students WHERE school_id=? ORDER BY name ASC',args:[schoolId]}); return r.rows; }
-const findAllBySchool = findBySchool;
-module.exports={findById,findByUserId,findBySchool,findAllBySchool};
+const {db}=require('../config/db');
+async function findById(id){const r=await db.execute({sql:'SELECT * FROM students WHERE id=? LIMIT 1',args:[id]});return r.rows[0]||null;}
+async function findByUserId(userId){const r=await db.execute({sql:'SELECT * FROM students WHERE user_id=? LIMIT 1',args:[userId]});return r.rows[0]||null;}
+async function findBySchool(schoolId){const r=await db.execute({sql:'SELECT * FROM students WHERE school_id=? ORDER BY name ASC',args:[schoolId]});return r.rows;}
+async function create({userId,schoolId,name,rollNo,className,section,guardianName,guardianEmail,phone}){const r=await db.execute({sql:'INSERT INTO students (user_id,school_id,name,roll_no,class_name,section,guardian_name,guardian_email,phone) VALUES (?,?,?,?,?,?,?,?,?)',args:[userId,schoolId,name,rollNo||null,className||null,section||null,guardianName||null,guardianEmail||null,phone||null]});return r.lastInsertRowid;}
+async function updateByUserId(userId,input){const current=await findByUserId(userId);if(!current)return null;await db.execute({sql:"UPDATE students SET name=?,roll_no=?,class_name=?,section=?,guardian_name=?,guardian_email=?,phone=?,updated_at=datetime('now') WHERE user_id=?",args:[input.name??current.name,input.rollNo??current.roll_no,input.className??current.class_name,input.section??current.section,input.guardianName??current.guardian_name,input.guardianEmail??current.guardian_email,input.phone??current.phone,userId]});return findByUserId(userId);}
+module.exports={findById,findByUserId,findBySchool,findAllBySchool:findBySchool,create,updateByUserId};
