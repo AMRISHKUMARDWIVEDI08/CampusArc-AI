@@ -3,7 +3,7 @@
 ## Product identity
 - Name: CampusArc AI
 - Vision: global campus platform combining education, AI research/learning, school operations, and USDC payments on Arc.
-- Default UI language: English-first. Hindi is explicitly excluded from the app, language selector, UI copy, AI language options, voice options, and Help Center.
+- Default UI language: English-first. Hindi is supported as an optional UI/AI language alongside the India 22-language set and additional international languages.
 - Platform: responsive mobile-first web app; Next.js static export frontend + Node.js/Express backend + embedded SQLite/LibSQL-compatible persistence.
 
 ## Opening experience
@@ -58,7 +58,7 @@ AI must respect role/data permissions. Clearly distinguish sources: web, uploade
 
 ## Payments
 - USDC fee/invoice payments on Arc.
-- Circle wallet/payment rails where appropriate.
+- Arc-native USDC wallet payments; no Circle API dependency.
 - Payment initiation, verification, reconciliation, receipts, history.
 - Transaction states: pending, processing, completed, failed, under_review, reconciliation_required, disputed as appropriate.
 - Handle duplicate, partial, wrong-invoice, delayed, and successful-on-chain-but-not-reconciled cases.
