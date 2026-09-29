@@ -13,6 +13,7 @@ const aiRoutes = require('./routes/api/v1/ai');
 const transactionRoutes = require('./routes/api/v1/transactions');
 const academicRoutes = require('./routes/api/v1/academics');
 const campusRoutes = require('./routes/api/v1/campus');
+const campusAccountRoutes = require('./routes/api/v1/campusAccounts');
 
 const app = express();
 app.disable('x-powered-by');
@@ -44,6 +45,7 @@ app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/transactions', transactionRoutes);
 app.use('/api/v1/academics', academicRoutes);
 app.use('/api/v1/campus', campusRoutes);
+app.use('/api/v1/campus-accounts', campusAccountRoutes);
 
 app.use((req, res) => res.status(404).json({ success: false, message: 'Route not found.' }));
 app.use((err, _req, res, _next) => {
