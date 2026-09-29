@@ -16,10 +16,13 @@ async function studentOverview(req, res) {
     if (req.user.role === ROLES.ADMIN && Number(req.user.school_id) !== Number(student.school_id)) return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
     if (![ROLES.STUDENT, ROLES.ADMIN].includes(req.user.role)) return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
 
-    const [attendanceResult, homeworkResult, examsResult] = await Promise.all([
+    const userResult = await db.execute({ sql: 'SELECT id FROM users WHERE id=? LIMIT 1', args: [student.user_id] });
+    const [attendanceResult, homeworkResult, examsResult, circularsResult, notificationsResult] = await Promise.all([
       db.execute({ sql: 'SELECT id, date, status FROM attendance WHERE student_id=? ORDER BY date DESC, id DESC LIMIT 30', args: [studentId] }),
       db.execute({ sql: 'SELECT id, title, content, date FROM homework WHERE school_id=? ORDER BY date DESC, id DESC LIMIT 20', args: [student.school_id] }),
-      db.execute({ sql: 'SELECT id, subject, marks, schedule_date FROM exams WHERE student_id=? ORDER BY schedule_date ASC, id ASC LIMIT 20', args: [studentId] })
+      db.execute({ sql: 'SELECT id, subject, marks, schedule_date FROM exams WHERE student_id=? ORDER BY schedule_date ASC, id ASC LIMIT 20', args: [studentId] }),
+      db.execute({ sql: 'SELECT id, title, content_hash, timestamp FROM circulars WHERE school_id=? ORDER BY timestamp DESC, id DESC LIMIT 20', args: [student.school_id] }),
+      db.execute({ sql: 'SELECT id, type, message, status, timestamp FROM notifications WHERE user_id=? ORDER BY timestamp DESC, id DESC LIMIT 30', args: [userResult.rows[0]?.id || 0] })
     ]);
 
     const attendance = attendanceResult.rows;
@@ -32,7 +35,9 @@ async function studentOverview(req, res) {
       summary: { attendanceRate, attendanceRecords: attendance.length, upcomingExams: examsResult.rows.filter(item => item.schedule_date).length },
       attendance,
       homework: homeworkResult.rows,
-      exams: examsResult.rows
+      exams: examsResult.rows,
+      circulars: circularsResult.rows,
+      notifications: notificationsResult.rows
     });
   } catch (err) {
     console.error('[academics.studentOverview]', err.message);
