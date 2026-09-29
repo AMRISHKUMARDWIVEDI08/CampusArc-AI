@@ -1,0 +1,11 @@
+'use strict';
+const {Router}=require('express');
+const {authenticate}=require('../../../middleware/auth');
+const {requireRole}=require('../../../middleware/roleGuard');
+const controller=require('../../../controllers/campusAccountsController');
+const router=Router();
+router.use(authenticate);
+router.post('/school/:schoolId/accounts',requireRole('admin'),controller.createAccount);
+router.get('/parent/family',requireRole('parent'),controller.family);
+router.get('/teacher/workspace',controller.teacher);
+module.exports=router;
