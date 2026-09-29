@@ -1,6 +1,6 @@
 'use strict';
 
-const ROLES = { STUDENT: 'student', ADMIN: 'admin' };
+const ROLES = { STUDENT: 'student', PARENT: 'parent', TEACHER: 'teacher', STAFF: 'staff', ADMIN: 'admin' };
 const BCRYPT_ROUNDS = 12;
 const TOKEN_COOKIE = 'arc_token';
 
