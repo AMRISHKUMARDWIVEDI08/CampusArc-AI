@@ -20,6 +20,8 @@ export default function AdminPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [accountRole, setAccountRole] = useState('parent');
+  const [accountForm, setAccountForm] = useState({username:'',email:'',password:'',student_id:'',relationship:'guardian',subject:'',class_name:'',section:''});
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login?role=admin');
@@ -45,6 +47,12 @@ export default function AdminPage() {
   useEffect(() => { refresh(); }, [user?.school_id]);
 
   function update(key) { return e => setForm(v => ({...v,[key]:e.target.value})); }
+  function updateAccount(key) { return e => setAccountForm(v => ({...v,[key]:e.target.value})); }
+  async function createAccount(e){
+    e.preventDefault(); setBusy(true); setError(''); setMessage('');
+    try { const result=await api.createCampusAccount(user.school_id,{role:accountRole,...accountForm,student_id:accountRole==='parent'?Number(accountForm.student_id):undefined}); setMessage(result.message||'Account created.'); setAccountForm(v=>({...v,username:'',email:'',password:''})); }
+    catch(e){setError(e.message||'Could not create account.')} finally{setBusy(false)}
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -107,6 +115,18 @@ export default function AdminPage() {
           </>
         ) : (
           <>
+            <section className="card" style={{marginBottom:16}}>
+              <span className="eyebrow">people & access</span>
+              <h2 style={{marginTop:8}}>Create parent or teacher access</h2>
+              <p className="muted" style={{marginTop:6}}>Accounts are linked to this school. Parent access is linked to one student; teacher access stores teaching assignment details.</p>
+              <form className="form" style={{marginTop:14}} onSubmit={createAccount}>
+                <div className="field"><label>Role</label><select value={accountRole} onChange={e=>setAccountRole(e.target.value)}><option value="parent">Parent</option><option value="teacher">Teacher</option></select></div>
+                <div className="grid grid-2"><div className="field"><label>Username</label><input value={accountForm.username} onChange={updateAccount('username')} required/></div><div className="field"><label>Email</label><input type="email" value={accountForm.email} onChange={updateAccount('email')}/></div></div>
+                <div className="field"><label>Initial password</label><input type="password" value={accountForm.password} onChange={updateAccount('password')} minLength={8} required/></div>
+                {accountRole==='parent'?<div className="grid grid-2"><div className="field"><label>Child</label><select value={accountForm.student_id} onChange={updateAccount('student_id')} required><option value="">Select student</option>{students.map(s=><option key={s.id} value={s.id}>{s.name} · {s.class_name||'class'} {s.section||''}</option>)}</select></div><div className="field"><label>Relationship</label><input value={accountForm.relationship} onChange={updateAccount('relationship')} placeholder="guardian"/></div></div>:<div className="grid grid-3"><div className="field"><label>Subject</label><input value={accountForm.subject} onChange={updateAccount('subject')}/></div><div className="field"><label>Class</label><input value={accountForm.class_name} onChange={updateAccount('class_name')}/></div><div className="field"><label>Section</label><input value={accountForm.section} onChange={updateAccount('section')}/></div></div>}
+                <button className="btn btn-primary" disabled={busy}>{busy?'Creating…':'Create account'}</button>
+              </form>
+            </section>
             <section className="card" style={{marginBottom:16}}>
               <span className="eyebrow">publish / record</span>
               <h2 style={{marginTop:8}}>Run a real campus operation</h2>
