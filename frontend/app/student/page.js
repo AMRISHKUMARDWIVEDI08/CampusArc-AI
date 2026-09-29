@@ -214,6 +214,38 @@ export default function StudentPage() {
         </section>
 
         <section className="section">
+          <h2 style={{ marginBottom: 12 }}>Campus updates</h2>
+          <div className="grid grid-2">
+            <section className="card">
+              <div className="label">circulars & notices</div>
+              {!academics?.circulars?.length ? <p className="muted" style={{ marginTop: 10 }}>No campus notices have been published yet.</p> :
+                <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
+                  {academics.circulars.slice(0, 6).map(item => <article key={item.id} style={{ paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
+                    <strong>{item.title}</strong><div className="muted" style={{ marginTop: 4, fontSize: 12 }}>{item.timestamp || ''}</div><p style={{ marginTop: 6 }}>{item.content_hash || 'Notice published by your school.'}</p>
+                  </article>)}
+                </div>}
+            </section>
+            <section className="card">
+              <div className="label">notifications</div>
+              {!academics?.notifications?.length ? <p className="muted" style={{ marginTop: 10 }}>No notifications.</p> :
+                <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
+                  {academics.notifications.slice(0, 6).map(item => <div key={item.id} style={{ paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
+                    <strong>{item.message}</strong><div className="muted" style={{ marginTop: 4, fontSize: 12 }}>{item.type} · {item.timestamp}</div>
+                  </div>)}
+                </div>}
+            </section>
+          </div>
+        </section>
+
+        <section className="section">
+          <h2 style={{ marginBottom: 12 }}>Exam report</h2>
+          {!academics?.exams?.length ? <div className="empty">No exam records are available yet.</div> :
+            <div className="card" style={{ overflowX: 'auto' }}><table className="table"><thead><tr><th>Subject</th><th>Marks</th><th>Date</th><th>Result</th></tr></thead><tbody>
+              {academics.exams.map(item => <tr key={item.id}><td>{item.subject}</td><td>{item.marks == null ? 'Scheduled' : item.marks + ' / 100'}</td><td>{item.schedule_date || '—'}</td><td>{item.marks == null ? 'Upcoming' : Number(item.marks) >= 40 ? 'Recorded' : 'Needs support'}</td></tr>)}
+            </tbody></table></div>}
+        </section>
+
+        <section className="section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}>
             <h2>Fee ledger</h2><span className="muted">{fees.length} record{fees.length === 1 ? '' : 's'}</span>
           </div>
