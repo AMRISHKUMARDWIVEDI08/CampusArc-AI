@@ -31,6 +31,10 @@ async function assertFeeAccess(feeId, requester) {
   } else if (requester.role === ROLES.STUDENT) {
     const student = await studentModel.findByUserId(requester.id);
     if (!student || Number(student.id) !== Number(fee.student_id)) throw badRequest('Access denied.', 403);
+  } else if (requester.role === ROLES.PARENT) {
+    const { db } = require('../config/db');
+    const linked = await db.execute({ sql: 'SELECT 1 FROM parent_student_links WHERE parent_user_id=? AND student_id=? LIMIT 1', args: [requester.id, fee.student_id] });
+    if (!linked.rows.length) throw badRequest('Access denied.', 403);
   } else {
     throw badRequest('Access denied.', 403);
   }
