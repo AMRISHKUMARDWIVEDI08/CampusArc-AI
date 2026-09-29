@@ -13,8 +13,12 @@ async function studentOverview(req, res) {
     if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
 
     if (req.user.role === ROLES.STUDENT && Number(req.user.student_id) !== studentId) return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
-    if (req.user.role === ROLES.ADMIN && Number(req.user.school_id) !== Number(student.school_id)) return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
-    if (![ROLES.STUDENT, ROLES.ADMIN].includes(req.user.role)) return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
+    if (req.user.role === ROLES.PARENT) {
+      const linked = await db.execute({ sql: 'SELECT 1 FROM parent_student_links WHERE parent_user_id=? AND student_id=? LIMIT 1', args: [req.user.id, studentId] });
+      if (!linked.rows.length) return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
+    }
+    if ([ROLES.ADMIN,ROLES.TEACHER,ROLES.STAFF].includes(req.user.role) && Number(req.user.school_id) !== Number(student.school_id)) return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
+    if (![ROLES.STUDENT, ROLES.PARENT, ROLES.ADMIN, ROLES.TEACHER, ROLES.STAFF].includes(req.user.role)) return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
 
     const userResult = await db.execute({ sql: 'SELECT id FROM users WHERE id=? LIMIT 1', args: [student.user_id] });
     const [attendanceResult, homeworkResult, examsResult, circularsResult, notificationsResult] = await Promise.all([
