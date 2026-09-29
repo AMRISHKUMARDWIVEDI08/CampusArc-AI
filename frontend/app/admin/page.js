@@ -1,18 +1,25 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import TopBar from '../../components/dashboard/TopBar';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../lib/api';
 
+const today = () => new Date().toISOString().slice(0, 10);
+
 export default function AdminPage() {
   const router = useRouter();
   const { user, loading, logout } = useAuth();
   const [school, setSchool] = useState(null);
-  const [rules, setRules] = useState([]);
-  const [transactions, setTransactions] = useState([]);
+  const [overview, setOverview] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [tab, setTab] = useState('overview');
+  const [type, setType] = useState('homework');
+  const [form, setForm] = useState({ title:'', content:'', date:today(), student_id:'', amount:'', subject:'', marks:'', status:'present', schedule_date:today() });
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login?role=admin');
@@ -21,69 +28,105 @@ export default function AdminPage() {
 
   async function refresh() {
     if (!user?.school_id) return;
-    setError('');
+    setError(''); setMessage('');
     try {
-      const [schoolResponse, rulesResponse, transactionResponse] = await Promise.all([
+      const [schoolResponse, overviewResponse, studentsResponse] = await Promise.all([
         api.school(user.school_id),
-        api.scholarshipRules(),
-        api.schoolTransactions(user.school_id)
+        api.campusSchoolOverview(user.school_id),
+        api.campusStudents(user.school_id)
       ]);
       setSchool(schoolResponse.school ?? null);
-      setRules(Array.isArray(rulesResponse.rules) ? rulesResponse.rules : []);
-      setTransactions(Array.isArray(transactionResponse.transactions) ? transactionResponse.transactions : []);
-    } catch (e) {
-      setError(e.message || 'Unable to load admin data.');
-    }
+      setOverview(overviewResponse ?? null);
+      setStudents(Array.isArray(studentsResponse?.students) ? studentsResponse.students : []);
+      if (!form.student_id && studentsResponse?.students?.[0]) setForm(v => ({...v,student_id:String(studentsResponse.students[0].id)}));
+    } catch (e) { setError(e.message || 'Unable to load school data.'); }
   }
 
   useEffect(() => { refresh(); }, [user?.school_id]);
 
-  const verifiedCount = useMemo(() => transactions.filter((tx) => tx.status === 'paid').length, [transactions]);
-  const pendingCount = useMemo(() => transactions.filter((tx) => tx.status === 'pending' || tx.status === 'processing').length, [transactions]);
-  const activeRules = useMemo(() => rules.filter((rule) => rule.is_active).length, [rules]);
+  function update(key) { return e => setForm(v => ({...v,[key]:e.target.value})); }
 
-  if (loading || !user) return <main className="login-wrap"><span className="status"><span className="dot" />Loading admin console…</span></main>;
+  async function submit(e) {
+    e.preventDefault();
+    if (!user?.school_id) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      let result;
+      const sid = Number(form.student_id);
+      if (type === 'homework') result = await api.publishHomework(user.school_id,{title:form.title,content:form.content,date:form.date});
+      if (type === 'circular') result = await api.publishCircular(user.school_id,{title:form.title,content:form.content});
+      if (type === 'fee') result = await api.addFee(user.school_id,{student_id:sid,amount:Number(form.amount)});
+      if (type === 'attendance') result = await api.recordAttendance(user.school_id,{student_id:sid,date:form.date,status:form.status});
+      if (type === 'exam') result = await api.recordExam(user.school_id,{student_id:sid,subject:form.subject,marks:form.marks,schedule_date:form.schedule_date});
+      setMessage(result?.message || 'Saved successfully.');
+      setForm(v => ({...v,title:'',content:'',amount:'',subject:'',marks:''}));
+      await refresh();
+    } catch (e) { setError(e.message || 'Could not save this record.'); }
+    finally { setBusy(false); }
+  }
+
+  if (loading || !user) return <main className="login-wrap"><span className="status"><span className="dot" />Loading school control center…</span></main>;
   if (user.role !== 'admin') return null;
 
+  const summary=overview?.summary||{};
   return (
     <div className="page">
       <TopBar user={user} onLogout={() => { logout(); router.replace('/login'); }} />
       <main className="shell section">
         <div className="hero" style={{ paddingBottom: 20 }}>
-          <span className="eyebrow">school admin</span>
-          <h1 style={{ fontSize: 42, marginTop: 14 }}>Campus control center.</h1>
-          <p style={{ marginTop: 10 }}>{school?.school_name || 'Your school'} · monitor payments, scholarships and the AI workspace.</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 18 }}>
-            <button className="btn btn-primary" onClick={() => router.push('/ai')}>Open AI workspace</button>
-            <button className="btn" onClick={refresh}>Refresh data</button>
-            <button className="btn" onClick={() => router.push('/help')}>Help Center</button>
+          <span className="eyebrow">school operations</span>
+          <h1 style={{ fontSize: 42, marginTop: 14 }}>{school?.school_name || 'School'} control center.</h1>
+          <p style={{ marginTop: 10 }}>Manage students, publish academic information, maintain attendance and create fee records from one workspace.</p>
+          <div className="actions">
+            <button className="btn" onClick={() => setTab('overview')}>Overview</button>
+            <button className="btn" onClick={() => setTab('manage')}>Manage campus</button>
+            <button className="btn btn-primary" onClick={() => router.push('/ai')}>AI workspace</button>
+            <button className="btn" onClick={refresh}>Refresh</button>
           </div>
         </div>
-        {error ? <div className="alert" role="alert" style={{ marginBottom: 16 }}>{error}</div> : null}
+        {message ? <div className="card" role="status" style={{ marginBottom: 14 }}>{message}</div> : null}
+        {error ? <div className="alert" role="alert" style={{ marginBottom: 14 }}>{error}</div> : null}
 
-        <div className="grid grid-3">
-          <section className="card"><div className="label">verified payments</div><div className="stat" style={{ marginTop: 8 }}>{verifiedCount}</div><p className="muted">On-chain verified records</p></section>
-          <section className="card"><div className="label">awaiting review</div><div className="stat" style={{ marginTop: 8 }}>{pendingCount}</div><p className="muted">Pending or processing</p></section>
-          <section className="card"><div className="label">active scholarship rules</div><div className="stat" style={{ marginTop: 8 }}>{activeRules}</div><p className="muted">Currently enabled</p></section>
-        </div>
-
-        <section className="section">
-          <div className="grid grid-3">
-            <section className="card"><div className="label">school</div><h2 style={{ marginTop: 8 }}>{school?.school_name ?? 'School not loaded'}</h2><p style={{ marginTop: 8 }}>School ID: {school?.id ?? user.school_id ?? '—'}</p></section>
-            <section className="card"><div className="label">Arc payment wallet</div><h2 style={{ marginTop: 8 }}>{school?.wallet_address ? `${school.wallet_address.slice(0, 8)}…${school.wallet_address.slice(-6)}` : 'Not configured'}</h2><p style={{ marginTop: 8 }}>Student wallets pay this school-controlled EVM address directly on configured Arc network.</p></section><section className="card"><div className="label">student join code</div><h2 className="mono" style={{ marginTop: 8, fontSize: 20 }}>{school?.join_code || 'Not available'}</h2><p style={{ marginTop: 8 }}>Share this code only with students who should join this school.</p></section>
-            <section className="card"><div className="label">demo status</div><h2 style={{ marginTop: 8 }}>Arc payment rail</h2><p style={{ marginTop: 8 }}>No Circle API is required for the payment flow.</p></section>
-          </div>
-        </section>
-
-        <section className="section">
-          <h2 style={{ marginBottom: 12 }}>Payment history</h2>
-          {!transactions.length ? <div className="empty">No campus transactions yet.</div> : <div className="card" style={{ overflowX: 'auto', marginBottom: 20 }}><table className="table"><thead><tr><th>Student</th><th>Amount</th><th>Status</th><th>Tx</th></tr></thead><tbody>{transactions.map((tx) => <tr key={tx.id}><td>{tx.student_name || tx.student_id}</td><td>{tx.amount} {tx.currency}</td><td>{tx.status}</td><td>{tx.tx_hash ? `${tx.tx_hash.slice(0, 8)}…${tx.tx_hash.slice(-6)}` : '—'}</td></tr>)}</tbody></table></div>}
-        </section>
-
-        <section className="section">
-          <h2 style={{ marginBottom: 12 }}>Scholarship rules</h2>
-          {!rules.length ? <div className="empty">No scholarship rules have been created yet.</div> : <div className="card" style={{ overflowX: 'auto' }}><table className="table"><thead><tr><th>Rule</th><th>Type</th><th>Threshold</th><th>Active</th></tr></thead><tbody>{rules.map((rule) => <tr key={rule.id}><td>{rule.rule_name}</td><td>{rule.rule_type}</td><td>{rule.threshold_value}</td><td>{rule.is_active ? 'Yes' : 'No'}</td></tr>)}</tbody></table></div>}
-        </section>
+        {tab === 'overview' ? (
+          <>
+            <div className="grid grid-3">
+              <section className="card"><div className="label">students</div><div className="stat" style={{marginTop:8}}>{summary.students ?? 0}</div><p className="muted">Active campus records</p></section>
+              <section className="card"><div className="label">fee records</div><div className="stat" style={{marginTop:8}}>{summary.feeRecords ?? 0}</div><p className="muted">Pending {summary.pendingFees ?? 0} · Paid {summary.paidFees ?? 0}</p></section>
+              <section className="card"><div className="label">amount due</div><div className="stat" style={{marginTop:8}}>{Number(summary.amountDue || 0).toFixed(2)} USDC</div><p className="muted">Ledger balance</p></section>
+            </div>
+            <section className="section">
+              <div className="grid grid-2">
+                <div className="card"><div className="label">Arc school wallet</div><div className="mono" style={{marginTop:8}}>{school?.wallet_address || 'Not configured'}</div><p className="muted" style={{marginTop:8}}>Direct student-wallet USDC destination.</p></div>
+                <div className="card"><div className="label">student join code</div><div className="mono" style={{fontSize:22,marginTop:8}}>{school?.join_code || '—'}</div><p className="muted" style={{marginTop:8}}>Give this code only to enrolled students.</p></div>
+              </div>
+            </section>
+            <section className="section">
+              <h2 style={{marginBottom:12}}>Recent published homework</h2>
+              {!overview?.homework?.length ? <div className="empty">No homework published yet.</div> : <div className="card" style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Title</th><th>Date</th><th>Content</th></tr></thead><tbody>{overview.homework.slice(0,10).map(x=><tr key={x.id}><td>{x.title}</td><td>{x.date}</td><td>{x.content || '—'}</td></tr>)}</tbody></table></div>}
+            </section>
+          </>
+        ) : (
+          <>
+            <section className="card" style={{marginBottom:16}}>
+              <span className="eyebrow">publish / record</span>
+              <h2 style={{marginTop:8}}>Run a real campus operation</h2>
+              <div className="field" style={{marginTop:14}}><label>Operation</label><select value={type} onChange={e=>setType(e.target.value)}>
+                <option value="homework">Homework</option><option value="circular">Circular / Notice</option><option value="fee">Fee due</option><option value="attendance">Attendance</option><option value="exam">Exam / Marks</option>
+              </select></div>
+              <form className="form" style={{marginTop:14}} onSubmit={submit}>
+                {(type==='homework'||type==='circular') ? <><div className="field"><label>Title</label><input value={form.title} onChange={update('title')} required/></div><div className="field"><label>{type==='homework'?'Homework details':'Notice content'}</label><textarea rows={5} value={form.content} onChange={update('content')} required/></div>{type==='homework'?<div className="field"><label>Date</label><input type="date" value={form.date} onChange={update('date')} required/></div>:null}</> : null}
+                {type==='fee' ? <><div className="field"><label>Student</label><select value={form.student_id} onChange={update('student_id')} required>{students.map(s=><option key={s.id} value={s.id}>{s.name} · {s.class_name||'class'} {s.section||''} · #{s.id}</option>)}</select></div><div className="field"><label>Amount (USDC)</label><input inputMode="decimal" type="number" min="0.01" step="0.01" value={form.amount} onChange={update('amount')} required/></div></> : null}
+                {type==='attendance' ? <><div className="grid grid-2"><div className="field"><label>Student</label><select value={form.student_id} onChange={update('student_id')} required>{students.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="field"><label>Date</label><input type="date" value={form.date} onChange={update('date')} required/></div></div><div className="field"><label>Status</label><select value={form.status} onChange={update('status')}><option>present</option><option>absent</option><option>late</option><option>leave</option></select></div></> : null}
+                {type==='exam' ? <><div className="field"><label>Student</label><select value={form.student_id} onChange={update('student_id')} required>{students.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="grid grid-2"><div className="field"><label>Subject</label><input value={form.subject} onChange={update('subject')} required/></div><div className="field"><label>Marks / 100</label><input type="number" min="0" max="100" step="0.01" value={form.marks} onChange={update('marks')}/></div></div><div className="field"><label>Exam date</label><input type="date" value={form.schedule_date} onChange={update('schedule_date')}/></div></> : null}
+                <button className="btn btn-primary" disabled={busy||!students.length}>{busy?'Saving…':'Save / Publish'}</button>
+              </form>
+            </section>
+            <section className="section">
+              <h2 style={{marginBottom:12}}>Students</h2>
+              {!students.length?<div className="empty">No students have joined this school yet.</div>:<div className="card" style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Name</th><th>Class</th><th>Parent</th><th>Contact</th><th>Status</th></tr></thead><tbody>{students.map(s=><tr key={s.id}><td>{s.name}<div className="muted mono">#{s.roll_no||s.id}</div></td><td>{s.class_name||'—'} {s.section||''}</td><td>{s.guardian_name||'—'}</td><td>{s.phone||s.guardian_email||s.email||'—'}</td><td>{s.is_active?'Active':'Inactive'}</td></tr>)}</tbody></table></div>}
+            </section>
+          </>
+        )}
       </main>
     </div>
   );
