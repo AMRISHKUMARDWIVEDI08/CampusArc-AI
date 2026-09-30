@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import TopBar from '../../components/dashboard/TopBar';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../lib/api';
+import { ARC_EXPLORER } from '../../lib/wallet';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -126,7 +127,7 @@ export default function AdminPage() {
             </div>
             {!transactions.length ? <div className="empty">No payment transactions have been recorded yet.</div> :
               <div className="card" style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Student</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th></tr></thead><tbody>
-                {transactions.slice(0,50).map(tx=><tr key={tx.id}><td>{tx.student_name || `#${tx.student_id}`}<div className="muted mono">{tx.roll_no || ''}</div></td><td>{tx.amount} {tx.currency || ''}</td><td>{tx.payment_provider || '—'}</td><td>{tx.status}</td><td>{tx.tx_hash ? <a href={`${school?.wallet_address ? '' : ''}${tx.tx_hash}`} className="mono" target="_blank" rel="noreferrer">{tx.tx_hash.slice(0,10)}…</a> : (tx.memo_ref || 'Awaiting payment')}</td></tr>)}
+                {transactions.slice(0,50).map(tx=><tr key={tx.id}><td>{tx.student_name || `#${tx.student_id}`}<div className="muted mono">{tx.roll_no || ''}</div></td><td>{tx.amount} {tx.currency || ''}</td><td>{tx.payment_provider || '—'}</td><td>{tx.status}</td><td>{tx.tx_hash ? <a href={`${ARC_EXPLORER}/tx/${tx.tx_hash}`} className="mono" target="_blank" rel="noreferrer">{tx.tx_hash.slice(0,10)}…</a> : (tx.memo_ref || 'Awaiting payment')}</td></tr>)}
               </tbody></table></div>}
           </section>
         ) : (
