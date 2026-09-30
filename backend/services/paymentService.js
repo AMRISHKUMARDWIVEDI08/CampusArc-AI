@@ -134,6 +134,11 @@ async function confirmFeePayment(feeId, requester, txHash, walletAddress) {
     failure_reason: null,
   });
   await feeModel.update(feeId, { status: 'paid', due_amount: 0 });
+  const { db } = require('../config/db');
+  await db.execute({
+    sql: 'UPDATE students SET balance_due=MAX(COALESCE(balance_due,0)-?,0),updated_at=datetime("now") WHERE id=?',
+    args: [fee.due_amount, fee.student_id],
+  });
 
   return { status: 'paid', transactionId: tx.id, transactionHash: txHash, blockNumber: result.blockNumber };
 }
