@@ -74,7 +74,7 @@ async function teacher(req,res){
         AND (ta.section IS NULL OR ta.section='' OR ta.section=s.section)
     )`;
     studentsSql+=' AND '+assignmentClause+' ORDER BY class_name,section,name LIMIT 500';
-    studentsArgs=[teacherId,schoolId];
+    studentsArgs=[schoolId,teacherId,schoolId];
     homeworkSql+=` AND (
       EXISTS (
         SELECT 1 FROM teacher_assignments ta
