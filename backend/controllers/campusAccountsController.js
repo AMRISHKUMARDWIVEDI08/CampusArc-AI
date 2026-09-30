@@ -19,14 +19,17 @@ async function createAccount(req,res){
   if(!allowedRoles.has(role)||username.length<3||password.length<8) return res.status(400).json({success:false,message:'role, username and a password of at least 8 characters are required.'});
   const exists=await db.execute({sql:'SELECT id FROM users WHERE LOWER(username)=LOWER(?) OR (? IS NOT NULL AND LOWER(email)=LOWER(?)) LIMIT 1',args:[username,email,email]});
   if(exists.rows.length) return res.status(409).json({success:false,message:'Username or email is already registered.'});
+  let studentId=null;
+  if(role==='parent'){
+    studentId=id(req.body?.student_id);
+    if(!studentId) return res.status(400).json({success:false,message:'student_id is required for a parent account.'});
+    const student=await db.execute({sql:'SELECT id FROM students WHERE id=? AND school_id=? LIMIT 1',args:[studentId,schoolId]});
+    if(!student.rows.length) return res.status(404).json({success:false,message:'Student not found in this school.'});
+  }
   const hash=await bcrypt.hash(password,BCRYPT_ROUNDS);
   const user=await db.execute({sql:'INSERT INTO users(username,email,password_hash,role,school_id) VALUES(?,?,?,?,?)',args:[username,email,hash,role,schoolId]});
   const userId=Number(user.lastInsertRowid);
   if(role==='parent'){
-    const studentId=id(req.body?.student_id);
-    if(!studentId) return res.status(400).json({success:false,message:'student_id is required for a parent account.'});
-    const student=await db.execute({sql:'SELECT id FROM students WHERE id=? AND school_id=? LIMIT 1',args:[studentId,schoolId]});
-    if(!student.rows.length) return res.status(404).json({success:false,message:'Student not found in this school.'});
     await db.execute({sql:'INSERT INTO parent_student_links(parent_user_id,student_id,relationship) VALUES(?,?,?)',args:[userId,studentId,text(req.body?.relationship,40)||'guardian']});
   } else {
     await db.execute({sql:'INSERT INTO teacher_assignments(teacher_user_id,school_id,subject,class_name,section) VALUES(?,?,?,?,?)',args:[userId,schoolId,text(req.body?.subject,120)||null,text(req.body?.class_name,80)||null,text(req.body?.section,30)||null]});
