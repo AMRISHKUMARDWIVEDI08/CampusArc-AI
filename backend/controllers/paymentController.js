@@ -17,6 +17,10 @@ async function listStudentFees(req, res) {
       if (!req.user.school_id || Number(req.user.school_id) !== Number(student.school_id)) return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
     } else if (req.user.role === ROLES.STUDENT) {
       if (!req.user.student_id || Number(req.user.student_id) !== studentId) return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
+    } else if (req.user.role === ROLES.PARENT) {
+      const { db } = require('../config/db');
+      const linked = await db.execute({ sql: 'SELECT 1 FROM parent_student_links WHERE parent_user_id=? AND student_id=? LIMIT 1', args: [req.user.id, studentId] });
+      if (!linked.rows.length) return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
     } else return res.status(403).json({ success: false, message: MESSAGES.FORBIDDEN });
     return res.status(200).json({ success: true, fees: await feeModel.findByStudent(studentId) });
   } catch (err) {
@@ -61,6 +65,10 @@ async function getReceipt(req, res) {
     if (!feeRecord) return res.status(404).json({ success: false, message: 'Fee record not found.' });
     if (req.user.role === ROLES.ADMIN) {
       if (feeRecord.school_id !== req.user.school_id) return res.status(403).json({ success: false, message: 'Access denied.' });
+    } else if (req.user.role === ROLES.PARENT) {
+      const { db } = require('../config/db');
+      const linked = await db.execute({ sql: 'SELECT 1 FROM parent_student_links WHERE parent_user_id=? AND student_id=? LIMIT 1', args: [req.user.id, feeRecord.student_id] });
+      if (!linked.rows.length) return res.status(403).json({ success: false, message: 'Access denied.' });
     } else {
       const student = await studentModel.findByUserId(req.user.id);
       if (!student || student.id !== feeRecord.student_id) return res.status(403).json({ success: false, message: 'Access denied.' });
