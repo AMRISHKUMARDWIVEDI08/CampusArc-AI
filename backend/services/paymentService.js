@@ -107,7 +107,17 @@ async function confirmFeePayment(feeId, requester, txHash, walletAddress) {
     );
   }
 
-  if (result.status === 'pending') return { status: 'pending', transactionHash: txHash };
+  if (result.status === 'pending') {
+    const pendingTx = await transactionModel.findByMemoRef(memoRef);
+    if (pendingTx) {
+      await transactionModel.updateStatus(pendingTx.id, {
+        status: 'pending',
+        tx_hash: txHash,
+        failure_reason: null,
+      });
+    }
+    return { status: 'pending', transactionId: pendingTx?.id || null, transactionHash: txHash };
+  }
   if (result.status !== 'success') throw badRequest('The blockchain transaction failed or was reverted.', 409);
 
   let tx = await transactionModel.findByMemoRef(memoRef);
@@ -127,14 +137,23 @@ async function confirmFeePayment(feeId, requester, txHash, walletAddress) {
     tx = await transactionModel.findById(txId);
   }
 
+  // Mark the transaction first, then close the fee only if it is still unpaid.
+  // The conditional fee update prevents concurrent confirmation requests from
+  // decrementing the student's balance more than once.
   await transactionModel.updateStatus(tx.id, {
     status: 'paid',
     tx_hash: txHash,
     block_ref: result.blockNumber != null ? String(result.blockNumber) : null,
     failure_reason: null,
   });
-  await feeModel.update(feeId, { status: 'paid', due_amount: 0 });
   const { db } = require('../config/db');
+  const feeUpdate = await db.execute({
+    sql: 'UPDATE fees SET status="paid",due_amount=0,updated_at=datetime("now") WHERE id=? AND status<>"paid"',
+    args: [feeId],
+  });
+  if (Number(feeUpdate.rowsAffected || 0) === 0) {
+    return { status: 'paid', transactionId: tx.id, transactionHash: txHash, blockNumber: result.blockNumber, alreadyPaid: true };
+  }
   await db.execute({
     sql: 'UPDATE students SET balance_due=MAX(COALESCE(balance_due,0)-?,0),updated_at=datetime("now") WHERE id=?',
     args: [fee.due_amount, fee.student_id],
