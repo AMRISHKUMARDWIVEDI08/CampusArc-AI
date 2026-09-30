@@ -1,5 +1,8 @@
 name: CampusArc CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [development, main]
@@ -17,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - name: Syntax check
         run: |
           find . -type f -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
@@ -53,5 +56,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npm run build
