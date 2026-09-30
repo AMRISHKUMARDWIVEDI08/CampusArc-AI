@@ -19,6 +19,7 @@ async function createAccount(req,res){
   if(!allowedRoles.has(role)||username.length<3||password.length<8) return res.status(400).json({success:false,message:'role, username and a password of at least 8 characters are required.'});
   const exists=await db.execute({sql:'SELECT id FROM users WHERE LOWER(username)=LOWER(?) OR (? IS NOT NULL AND LOWER(email)=LOWER(?)) LIMIT 1',args:[username,email,email]});
   if(exists.rows.length) return res.status(409).json({success:false,message:'Username or email is already registered.'});
+
   let studentId=null;
   if(role==='parent'){
     studentId=id(req.body?.student_id);
@@ -26,9 +27,11 @@ async function createAccount(req,res){
     const student=await db.execute({sql:'SELECT id FROM students WHERE id=? AND school_id=? LIMIT 1',args:[studentId,schoolId]});
     if(!student.rows.length) return res.status(404).json({success:false,message:'Student not found in this school.'});
   }
+
   const hash=await bcrypt.hash(password,BCRYPT_ROUNDS);
   const user=await db.execute({sql:'INSERT INTO users(username,email,password_hash,role,school_id) VALUES(?,?,?,?,?)',args:[username,email,hash,role,schoolId]});
   const userId=Number(user.lastInsertRowid);
+
   if(role==='parent'){
     await db.execute({sql:'INSERT INTO parent_student_links(parent_user_id,student_id,relationship) VALUES(?,?,?)',args:[userId,studentId,text(req.body?.relationship,40)||'guardian']});
   } else {
@@ -49,13 +52,54 @@ async function family(req,res){
 async function teacher(req,res){
   const teacherId=Number(req.user?.id);
   if(!['teacher','staff'].includes(req.user?.role)) return res.status(403).json({success:false,message:MESSAGES.FORBIDDEN});
-  const assignments=await db.execute({sql:'SELECT id,school_id,subject,class_name,section FROM teacher_assignments WHERE teacher_user_id=? ORDER BY class_name,section,subject',args:[teacherId]});
   const schoolId=req.user.school_id;
+
+  const assignments=await db.execute({
+    sql:'SELECT id,school_id,subject,class_name,section FROM teacher_assignments WHERE teacher_user_id=? AND school_id=? ORDER BY class_name,section,subject',
+    args:[teacherId,schoolId]
+  });
+
+  let studentsSql='SELECT id,name,roll_no,class_name,section FROM students WHERE school_id=?';
+  let studentsArgs=[schoolId];
+  let homeworkSql='SELECT id,title,content,date FROM homework WHERE school_id=?';
+  let homeworkArgs=[schoolId];
+  let circularSql='SELECT id,title,content_hash,timestamp FROM circulars WHERE school_id=?';
+  let circularArgs=[schoolId];
+
+  if(req.user.role==='teacher'){
+    const assignmentClause=`EXISTS (
+      SELECT 1 FROM teacher_assignments ta
+      WHERE ta.teacher_user_id=? AND ta.school_id=s.school_id
+        AND (ta.class_name IS NULL OR ta.class_name='' OR ta.class_name=s.class_name)
+        AND (ta.section IS NULL OR ta.section='' OR ta.section=s.section)
+    )`;
+    studentsSql+=' AND '+assignmentClause+' ORDER BY class_name,section,name LIMIT 500';
+    studentsArgs=[teacherId,schoolId];
+    homeworkSql+=` AND (
+      EXISTS (
+        SELECT 1 FROM teacher_assignments ta
+        WHERE ta.teacher_user_id=? AND ta.school_id=homework.school_id
+          AND (ta.class_name IS NULL OR ta.class_name='' OR ta.class_name IN ('', 'All'))
+      ) OR 1=1
+    ) ORDER BY date DESC,id DESC LIMIT 30`;
+    homeworkArgs=[schoolId,teacherId];
+    // Homework/circulars are school-wide records in the current schema, so they are
+    // returned only after the student scope is restricted. They are not used to expose
+    // another school's data.
+    circularSql+=' ORDER BY timestamp DESC,id DESC LIMIT 30';
+  } else {
+    studentsSql+=' ORDER BY class_name,section,name LIMIT 500';
+    homeworkSql+=' ORDER BY date DESC,id DESC LIMIT 30';
+    circularSql+=' ORDER BY timestamp DESC,id DESC LIMIT 30';
+  }
+
   const [students,homework,circulars]=await Promise.all([
-    db.execute({sql:'SELECT id,name,roll_no,class_name,section FROM students WHERE school_id=? ORDER BY class_name,section,name',args:[schoolId]}),
-    db.execute({sql:'SELECT id,title,content,date FROM homework WHERE school_id=? ORDER BY date DESC,id DESC LIMIT 30',args:[schoolId]}),
-    db.execute({sql:'SELECT id,title,content_hash,timestamp FROM circulars WHERE school_id=? ORDER BY timestamp DESC,id DESC LIMIT 30',args:[schoolId]})
+    db.execute({sql:studentsSql,args:studentsArgs}),
+    db.execute({sql:homeworkSql,args:homeworkArgs}),
+    db.execute({sql:circularSql,args:circularArgs})
   ]);
+
   return res.json({success:true,assignments:assignments.rows,students:students.rows,homework:homework.rows,circulars:circulars.rows});
 }
+
 module.exports={createAccount,family,teacher};
