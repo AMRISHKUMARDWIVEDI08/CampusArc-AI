@@ -14,6 +14,7 @@ export default function AdminPage() {
   const [school, setSchool] = useState(null);
   const [overview, setOverview] = useState(null);
   const [students, setStudents] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [tab, setTab] = useState('overview');
   const [type, setType] = useState('homework');
   const [form, setForm] = useState({ title:'', content:'', date:today(), student_id:'', amount:'', subject:'', marks:'', status:'present', schedule_date:today() });
@@ -32,14 +33,16 @@ export default function AdminPage() {
     if (!user?.school_id) return;
     setError(''); setMessage('');
     try {
-      const [schoolResponse, overviewResponse, studentsResponse] = await Promise.all([
+      const [schoolResponse, overviewResponse, studentsResponse, transactionsResponse] = await Promise.all([
         api.school(user.school_id),
         api.campusSchoolOverview(user.school_id),
-        api.campusStudents(user.school_id)
+        api.campusStudents(user.school_id),
+        api.schoolTransactions(user.school_id)
       ]);
       setSchool(schoolResponse.school ?? null);
       setOverview(overviewResponse ?? null);
       setStudents(Array.isArray(studentsResponse?.students) ? studentsResponse.students : []);
+      setTransactions(Array.isArray(transactionsResponse?.transactions) ? transactionsResponse.transactions : []);
       if (!form.student_id && studentsResponse?.students?.[0]) setForm(v => ({...v,student_id:String(studentsResponse.students[0].id)}));
     } catch (e) { setError(e.message || 'Unable to load school data.'); }
   }
@@ -88,6 +91,7 @@ export default function AdminPage() {
           <div className="actions">
             <button className="btn" onClick={() => setTab('overview')}>Overview</button>
             <button className="btn" onClick={() => setTab('manage')}>Manage campus</button>
+            <button className="btn" onClick={() => setTab('payments')}>Payments</button>
             <button className="btn btn-primary" onClick={() => router.push('/ai')}>AI workspace</button>
             <button className="btn" onClick={refresh}>Refresh</button>
           </div>
@@ -113,9 +117,21 @@ export default function AdminPage() {
               {!overview?.homework?.length ? <div className="empty">No homework published yet.</div> : <div className="card" style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Title</th><th>Date</th><th>Content</th></tr></thead><tbody>{overview.homework.slice(0,10).map(x=><tr key={x.id}><td>{x.title}</td><td>{x.date}</td><td>{x.content || '—'}</td></tr>)}</tbody></table></div>}
             </section>
           </>
+        ) : tab === 'payments' ? (
+          <section className="section">
+            <div className="card" style={{marginBottom:16}}>
+              <span className="eyebrow">payment operations</span>
+              <h2 style={{marginTop:8}}>School payment ledger</h2>
+              <p className="muted" style={{marginTop:6}}>Review pending and verified payment records. Blockchain payments are marked paid only after server-side Arc verification.</p>
+            </div>
+            {!transactions.length ? <div className="empty">No payment transactions have been recorded yet.</div> :
+              <div className="card" style={{overflowX:'auto'}}><table className="table"><thead><tr><th>Student</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th></tr></thead><tbody>
+                {transactions.slice(0,50).map(tx=><tr key={tx.id}><td>{tx.student_name || `#${tx.student_id}`}<div className="muted mono">{tx.roll_no || ''}</div></td><td>{tx.amount} {tx.currency || ''}</td><td>{tx.payment_provider || '—'}</td><td>{tx.status}</td><td>{tx.tx_hash ? <a href={`${school?.wallet_address ? '' : ''}${tx.tx_hash}`} className="mono" target="_blank" rel="noreferrer">{tx.tx_hash.slice(0,10)}…</a> : (tx.memo_ref || 'Awaiting payment')}</td></tr>)}
+              </tbody></table></div>}
+          </section>
         ) : (
           <>
-            <section className="card" style={{marginBottom:16}}>
+            <section className="card" style={{marginBottom:16}}> 
               <span className="eyebrow">people & access</span>
               <h2 style={{marginTop:8}}>Create parent or teacher access</h2>
               <p className="muted" style={{marginTop:6}}>Accounts are linked to this school. Parent access is linked to one student; teacher access stores teaching assignment details.</p>
