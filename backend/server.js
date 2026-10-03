@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const env = require('./config/env');
 const { getDb } = require('./config/db');
+const { migrate } = require('./config/initDb');
 const authRoutes = require('./routes/api/v1/auth');
 const schoolRoutes = require('./routes/api/v1/schools');
 const feeRoutes = require('./routes/api/v1/fees');
@@ -29,13 +30,21 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '256kb' }));
-app.get('/health', (_req, res) => res.status(200).json({
-  success: true,
-  product: 'CampusArc AI',
-  network: env.ARC_NETWORK,
-  payments: 'USDC on Arc',
-  message: 'CampusArc AI API running.'
-}));
+app.get('/health', async (_req, res) => {
+  try {
+    await getDb();
+    return res.status(200).json({
+      success: true,
+      product: 'CampusArc AI',
+      network: env.ARC_NETWORK,
+      payments: 'USDC on Arc',
+      database: 'connected',
+      message: 'CampusArc AI API running.'
+    });
+  } catch (_error) {
+    return res.status(503).json({ success: false, product: 'CampusArc AI', database: 'unavailable' });
+  }
+});
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/schools', schoolRoutes);
@@ -55,6 +64,7 @@ app.use((err, _req, res, _next) => {
 });
 
 async function start() {
+  await migrate();
   await getDb();
   app.listen(env.PORT, () => console.log(`[server] CampusArc AI running on port ${env.PORT}`));
 }
