@@ -30,8 +30,15 @@ const env = {
 
 if (!env.JWT_SECRET) throw new Error('JWT_SECRET is required. Configure it in backend/.env.');
 if (env.JWT_SECRET.length < 32) throw new Error('JWT_SECRET must be at least 32 characters long.');
-if (/^libsql:\/\//i.test(env.DATABASE_URL) && !env.DATABASE_AUTH_TOKEN) {
+const isRemoteDatabase = /^(libsql|https?):\/\//i.test(env.DATABASE_URL);
+if (isRemoteDatabase && !env.DATABASE_AUTH_TOKEN) {
   throw new Error('DATABASE_AUTH_TOKEN is required when using a hosted libSQL database.');
+}
+if (env.NODE_ENV === 'production' && !env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is required in production to prevent data loss on ephemeral filesystems.');
+}
+if (env.NODE_ENV === 'production' && env.CORS_ORIGINS.length === 0) {
+  throw new Error('CORS_ORIGINS must contain the exact production frontend origin.');
 }
 
 module.exports = env;
