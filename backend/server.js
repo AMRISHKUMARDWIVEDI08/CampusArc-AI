@@ -4,7 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const env = require('./config/env');
-const { getDb } = require('./config/db');
+const { db, getDb } = require('./config/db');
 const { migrate } = require('./config/initDb');
 const authRoutes = require('./routes/api/v1/auth');
 const schoolRoutes = require('./routes/api/v1/schools');
@@ -33,6 +33,7 @@ app.use(express.json({ limit: '256kb' }));
 app.get('/health', async (_req, res) => {
   try {
     await getDb();
+    await db.execute('SELECT 1');
     return res.status(200).json({
       success: true,
       product: 'CampusArc AI',
