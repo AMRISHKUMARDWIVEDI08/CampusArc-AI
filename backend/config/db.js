@@ -5,7 +5,7 @@ const { createClient } = require('@libsql/client');
 const env = require('./env');
 
 const DB_PATH = env.DB_PATH || path.join(__dirname, '../data/database.sqlite');
-const isRemoteDatabase = /^libsql:\/\//i.test(env.DATABASE_URL) || /^https:\/\//i.test(env.DATABASE_URL);
+const isRemoteDatabase = /^(libsql|https?):\/\//i.test(env.DATABASE_URL);
 const clientOptions = isRemoteDatabase
   ? { url: env.DATABASE_URL, authToken: env.DATABASE_AUTH_TOKEN || undefined }
   : { url: env.DATABASE_URL || `file:${DB_PATH}` };
