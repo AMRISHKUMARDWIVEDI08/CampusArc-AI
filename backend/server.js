@@ -42,8 +42,16 @@ app.get('/health', async (_req, res) => {
       database: 'connected',
       message: 'CampusArc AI API running.'
     });
-  } catch (_error) {
-    return res.status(503).json({ success: false, product: 'CampusArc AI', database: 'unavailable' });
+  } catch (error) {
+    console.error('[health] Database unavailable:', error.message);
+    return res.status(200).json({
+      success: true,
+      product: 'CampusArc AI',
+      network: env.ARC_NETWORK,
+      payments: 'USDC on Arc',
+      database: 'unavailable',
+      message: 'CampusArc AI API running; database connection pending.'
+    });
   }
 });
 
@@ -93,3 +101,13 @@ async function start() {
     console.error('[server] Database did not become ready after 5 attempts. API remains online; /health will report database unavailable.');
   }
 }
+
+
+if (require.main === 'module') {
+  start().catch(err => {
+    console.error('[server] Startup failed:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = { app, start };
