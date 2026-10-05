@@ -67,6 +67,10 @@ app.use((err, _req, res, _next) => {
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function start() {
+  app.listen(env.PORT, '0.0.0.0', () => {
+    console.log(`[server] CampusArc AI listening on port ${env.PORT}`);
+  });
+
   let lastError;
 
   for (let attempt = 1; attempt <= 5; attempt += 1) {
@@ -75,27 +79,17 @@ async function start() {
       await migrate();
       await getDb();
       await db.execute('SELECT 1');
+      console.log('[server] Database connected and ready.');
       lastError = null;
       break;
     } catch (err) {
       lastError = err;
-      console.error(`[server] Database startup attempt ${attempt} failed:`, err.message);
+      console.error(`[server] Database startup attempt ${attempt} failed:`, err);
       if (attempt < 5) await sleep(attempt * 3000);
     }
   }
 
-  if (lastError) throw lastError;
-
-  app.listen(env.PORT, '0.0.0.0', () => {
-    console.log(`[server] CampusArc AI running on port ${env.PORT}`);
-  });
+  if (lastError) {
+    console.error('[server] Database did not become ready after 5 attempts. API remains online; /health will report database unavailable.');
+  }
 }
-
-if (require.main === module) {
-  start().catch(err => {
-    console.error('[server] Startup failed:', err.message);
-    process.exit(1);
-  });
-}
-
-module.exports = { app, start };
