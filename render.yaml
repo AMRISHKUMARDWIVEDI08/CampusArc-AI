@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: campusarc-ai-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ARC_NETWORK
+        value: arc-testnet
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_AUTH_TOKEN
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://campusarc-ai.vercel.app

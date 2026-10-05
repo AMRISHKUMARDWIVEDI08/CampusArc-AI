@@ -22,18 +22,22 @@ async function applyMigration(file, version) {
   await db.execute({ sql: 'INSERT INTO schema_version (version) VALUES (?)', args: [version] });
 }
 
+async function migrate() {
+  await getDb();
+  const current = await getCurrentVersion();
+  const files = fs.readdirSync(MIGRATION_DIR).filter(f => /^\d+_.*\.sql$/.test(f)).sort();
+  for (const file of files) {
+    const version = Number(file.match(/^(\d+)_/)[1]);
+    if (version <= current) continue;
+    await applyMigration(path.join(MIGRATION_DIR, file), version);
+    console.log(`[initDb] Applied migration ${file}`);
+  }
+  console.log('[initDb] Database initialization complete.');
+}
+
 async function init() {
   try {
-    await getDb();
-    const current = await getCurrentVersion();
-    const files = fs.readdirSync(MIGRATION_DIR).filter(f => /^\d+_.*\.sql$/.test(f)).sort();
-    for (const file of files) {
-      const version = Number(file.match(/^(\d+)_/)[1]);
-      if (version <= current) continue;
-      await applyMigration(path.join(MIGRATION_DIR, file), version);
-      console.log(`[initDb] Applied migration ${file}`);
-    }
-    console.log('[initDb] Database initialization complete.');
+    await migrate();
   } catch (err) {
     console.error('[initDb] FATAL:', err.message);
     process.exitCode = 1;
@@ -43,4 +47,4 @@ async function init() {
 }
 
 if (require.main === module) init();
-module.exports = { init };
+module.exports = { init, migrate };
