@@ -64,10 +64,31 @@ app.use((err, _req, res, _next) => {
   res.status(status).json({ success: false, message: status < 500 ? err.message : 'Internal server error.' });
 });
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 async function start() {
-  await migrate();
-  await getDb();
-  app.listen(env.PORT, () => console.log(`[server] CampusArc AI running on port ${env.PORT}`));
+  let lastError;
+
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    try {
+      console.log(`[server] Database startup attempt ${attempt}/5`);
+      await migrate();
+      await getDb();
+      await db.execute('SELECT 1');
+      lastError = null;
+      break;
+    } catch (err) {
+      lastError = err;
+      console.error(`[server] Database startup attempt ${attempt} failed:`, err.message);
+      if (attempt < 5) await sleep(attempt * 3000);
+    }
+  }
+
+  if (lastError) throw lastError;
+
+  app.listen(env.PORT, '0.0.0.0', () => {
+    console.log(`[server] CampusArc AI running on port ${env.PORT}`);
+  });
 }
 
 if (require.main === module) {
